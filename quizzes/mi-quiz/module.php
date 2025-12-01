@@ -1,58 +1,62 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if (!defined('ABSPATH'))
+    exit;
 
 // Data is now loaded "just-in-time" within the methods that need it for maximum reliability.
 
-class MI_Quiz_Plugin_AI {
-    const VERSION           = '9.9.0';
-    const OPT_GROUP         = 'miq_settings';
-    const OPT_BCC           = 'miq_bcc_emails';
-    const OPT_ANTITHREAD    = 'miq_antithread';
+class MI_Quiz_Plugin_AI
+{
+    const VERSION = '9.9.0';
+    const OPT_GROUP = 'miq_settings';
+    const OPT_BCC = 'miq_bcc_emails';
+    const OPT_ANTITHREAD = 'miq_antithread';
     const TABLE_SUBSCRIBERS = 'miq_subscribers';
     const TRANSIENT_QUIZ_RESULTS_PREFIX = 'miq_quiz_results_';
 
-    public function __construct() {
+    public function __construct()
+    {
         // Register this quiz with the core platform to appear in the dashboard.
         if (class_exists('Micro_Coach_Core')) {
             Micro_Coach_Core::register_quiz('mi-quiz', [
-                'title'            => 'Multiple Intelligences Quiz',
-                'shortcode'        => 'mi_quiz',
+                'title' => 'Multiple Intelligences Quiz',
+                'shortcode' => 'mi_quiz',
                 'results_meta_key' => 'miq_quiz_results',
-                'order'            => 10, // Controls the display order in the dashboard.
-                'description'      => 'Discover your unique blend of intelligences and unlock your full potential with a personalized action plan.',
+                'order' => 10, // Controls the display order in the dashboard.
+                'description' => 'Discover your unique blend of intelligences and unlock your full potential with a personalized action plan.',
                 'description_completed' => 'This assessment reveals your unique profile of intelligences, providing insights into your natural strengths and learning styles.',
             ]);
         }
 
         // Frontend & admin hooks
-        add_shortcode('mi_quiz', [ $this, 'render_quiz' ]);
-        add_shortcode('mi-quiz', [ $this, 'render_quiz' ]); // Add alias for convenience.
-        if ( is_admin() ) {
-            add_action('admin_menu',  [ $this, 'add_settings_pages' ]);
-            add_action('admin_init',  [ $this, 'register_settings' ]);
+        add_shortcode('mi_quiz', [$this, 'render_quiz']);
+        add_shortcode('mi-quiz', [$this, 'render_quiz']); // Add alias for convenience.
+        if (is_admin()) {
+            add_action('admin_menu', [$this, 'add_settings_pages']);
+            add_action('admin_init', [$this, 'register_settings']);
         } else {
-            add_action('wp_enqueue_scripts', [ $this, 'enqueue_assets' ]);
+            add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
         }
 
         // AJAX hooks
-        add_action('wp_ajax_miq_email_results',        [ $this, 'ajax_email_results' ]);
-        add_action('wp_ajax_nopriv_miq_email_results', [ $this, 'ajax_email_results' ]);
-        add_action('wp_ajax_nopriv_miq_magic_register',[ $this, 'ajax_magic_register' ]);
-        add_action('wp_ajax_miq_delete_subs',          [ $this, 'ajax_delete_subs' ]);
-        add_action('wp_ajax_miq_export_subs',          [ $this, 'ajax_export_subs' ]);
-        add_action('wp_ajax_miq_save_user_results',    [ $this, 'ajax_save_user_results' ]);
-        add_action('wp_ajax_miq_delete_user_results',  [ $this, 'ajax_delete_user_results' ]);
-        add_action('wp_ajax_miq_generate_pdf',         [ $this, 'ajax_generate_pdf' ]);
+        add_action('wp_ajax_miq_email_results', [$this, 'ajax_email_results']);
+        add_action('wp_ajax_nopriv_miq_email_results', [$this, 'ajax_email_results']);
+        add_action('wp_ajax_nopriv_miq_magic_register', [$this, 'ajax_magic_register']);
+        add_action('wp_ajax_miq_delete_subs', [$this, 'ajax_delete_subs']);
+        add_action('wp_ajax_miq_export_subs', [$this, 'ajax_export_subs']);
+        add_action('wp_ajax_miq_save_user_results', [$this, 'ajax_save_user_results']);
+        add_action('wp_ajax_miq_delete_user_results', [$this, 'ajax_delete_user_results']);
+        add_action('wp_ajax_miq_generate_pdf', [$this, 'ajax_generate_pdf']);
 
         // Hook into WordPress user deletion to clean up our custom table.
-        add_action('delete_user', [ $this, 'handle_user_deletion' ]);
+        add_action('delete_user', [$this, 'handle_user_deletion']);
     }
 
     /** Create/upgrade the subscribers table */
-    public function ensure_tables(){
+    public function ensure_tables()
+    {
         global $wpdb;
-        $table   = $wpdb->prefix . self::TABLE_SUBSCRIBERS;
+        $table = $wpdb->prefix . self::TABLE_SUBSCRIBERS;
         $charset = $wpdb->get_charset_collate();
         $sql = "CREATE TABLE IF NOT EXISTS `$table` (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -70,12 +74,14 @@ class MI_Quiz_Plugin_AI {
     }
 
     /** Activation hook */
-    public static function activate() {
+    public static function activate()
+    {
         (new self())->ensure_tables();
     }
 
     /** Admin: settings + subscribers pages */
-    public function add_settings_pages() {
+    public function add_settings_pages()
+    {
         // The subscribers page is now a submenu of the main Quiz Platform.
         add_submenu_page(
             'quiz-platform-settings',      // Parent slug
@@ -83,44 +89,55 @@ class MI_Quiz_Plugin_AI {
             'MI Quiz Subs',                // Menu title
             'manage_options',              // Capability
             'mi-quiz-subs',                // Menu slug
-            [ $this,'render_subs_page' ]   // Function
+            [$this, 'render_subs_page']   // Function
         );
     }
 
-    public function register_settings() {
+    public function register_settings()
+    {
         // Register settings with the core platform's group.
-        register_setting( 'mc_quiz_platform_settings', self::OPT_BCC );
-        register_setting( 'mc_quiz_platform_settings', self::OPT_ANTITHREAD );
+        register_setting('mc_quiz_platform_settings', self::OPT_BCC);
+        register_setting('mc_quiz_platform_settings', self::OPT_ANTITHREAD);
 
         // Add a new section to the main Quiz Platform settings page.
         add_settings_section(
             'miq_main',                      // Section ID
             'MI Quiz Settings',              // Section Title
-            function() {
+            function () {
                 echo '<p>Settings specific to the Multiple Intelligences Quiz, such as email notifications.</p>';
             },
             'quiz-platform-settings'         // Page slug
         );
 
         add_settings_field(
-            self::OPT_BCC, 'BCC Results Email', function(){
-                $v = esc_attr( get_option(self::OPT_BCC,'') );
-                echo '<input type="text" style="width:480px" name="'.esc_attr(self::OPT_BCC).'" value="'.$v.'" placeholder="admin@example.com, another@example.com">';
+            self::OPT_BCC,
+            'BCC Results Email',
+            function () {
+                $v = esc_attr(get_option(self::OPT_BCC, ''));
+                echo '<input type="text" style="width:480px" name="' . esc_attr(self::OPT_BCC) . '" value="' . $v . '" placeholder="admin@example.com, another@example.com">';
                 echo '<p class="description">Admins to notify with a copy of results. Comma-separated.</p>';
-            }, 'quiz-platform-settings', 'miq_main' );
+            },
+            'quiz-platform-settings',
+            'miq_main'
+        );
 
         // Remove the UI for the anti-threading option per request, but
         // leave functionality intact. The underlying option continues
         // to be read by maybe_antithread() with a default of enabled.
     }
 
-    public function render_subs_page(){
-        global $wpdb; $table = $wpdb->prefix . self::TABLE_SUBSCRIBERS;
+    public function render_subs_page()
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . self::TABLE_SUBSCRIBERS;
         $rows = $wpdb->get_results("SELECT * FROM `$table` ORDER BY id DESC LIMIT 5000", ARRAY_A);
-        $export_url = wp_nonce_url( admin_url('admin-ajax.php?action=miq_export_subs'), 'miq_nonce' );
+        $export_url = wp_nonce_url(admin_url('admin-ajax.php?action=miq_export_subs'), 'miq_nonce');
         echo '<div class="wrap"><h1>MI Quiz Subscribers</h1>';
-        echo '<p><a class="button button-secondary" href="'.esc_url($export_url).'">Download CSV</a></p>';
-        if ( empty($rows) ) { echo '<p>No subscribers yet.</p></div>'; return; }
+        echo '<p><a class="button button-secondary" href="' . esc_url($export_url) . '">Download CSV</a></p>';
+        if (empty($rows)) {
+            echo '<p>No subscribers yet.</p></div>';
+            return;
+        }
         echo '<div class="tablenav top"><div class="alignleft actions bulkactions">
                 <button type="button" class="button" id="miq-select-all-btn">Select All</button>
                 <button type="button" class="button" id="miq-deselect-all-btn">Deselect All</button>
@@ -130,53 +147,55 @@ class MI_Quiz_Plugin_AI {
                 <th class="miq-subs-checkbox-col"><input type="checkbox" id="miq-check-all"></th>
                 <th>ID</th><th>Date</th><th>First</th><th>Last</th><th>Email</th><th>IP</th>
               </tr></thead><tbody>';
-        foreach ($rows as $r){
-            echo '<tr>'.
-              '<th scope="row" class="check-column"><input type="checkbox" class="miq-row" value="'.intval($r['id']).'"></th>'.
-              '<td>'.intval($r['id']).'</td>'.
-              '<td>'.esc_html($r['created_at']).'</td>'.
-              '<td>'.esc_html($r['first_name']).'</td>'.
-              '<td>'.esc_html($r['last_name']).'</td>'.
-              '<td>'.esc_html($r['email']).'</td>'.
-              '<td>'.esc_html($r['ip']).'</td>'.
-            '</tr>';
+        foreach ($rows as $r) {
+            echo '<tr>' .
+                '<th scope="row" class="check-column"><input type="checkbox" class="miq-row" value="' . intval($r['id']) . '"></th>' .
+                '<td>' . intval($r['id']) . '</td>' .
+                '<td>' . esc_html($r['created_at']) . '</td>' .
+                '<td>' . esc_html($r['first_name']) . '</td>' .
+                '<td>' . esc_html($r['last_name']) . '</td>' .
+                '<td>' . esc_html($r['email']) . '</td>' .
+                '<td>' . esc_html($r['ip']) . '</td>' .
+                '</tr>';
         }
         echo '</tbody></table></div>'; ?>
         <script>
-        (function(){
-          const $ = s => document.querySelector(s);
-          const $$ = s => Array.from(document.querySelectorAll(s));
-          const nonce = '<?php echo esc_js( wp_create_nonce('miq_nonce') ); ?>';
-          const selectAllBtn = $('#miq-select-all-btn');
-          const deselectAllBtn = $('#miq-deselect-all-btn');
+            (function () {
+                const $ = s => document.querySelector(s);
+                const $$ = s => Array.from(document.querySelectorAll(s));
+                const nonce = '<?php echo esc_js(wp_create_nonce('miq_nonce')); ?>';
+                const selectAllBtn = $('#miq-select-all-btn');
+                const deselectAllBtn = $('#miq-deselect-all-btn');
 
-          const setChecks = (checked) => {
-            $$('.miq-row').forEach(cb => cb.checked = checked);
-            $('#miq-check-all').checked = checked;
-          };
+                const setChecks = (checked) => {
+                    $$('.miq-row').forEach(cb => cb.checked = checked);
+                    $('#miq-check-all').checked = checked;
+                };
 
-          const all = $('#miq-check-all');
-          all && all.addEventListener('change', () => setChecks(all.checked));
-          selectAllBtn && selectAllBtn.addEventListener('click', () => setChecks(true));
-          deselectAllBtn && deselectAllBtn.addEventListener('click', () => setChecks(false));
-          const del = $('#miq-del-selected');
-          del && del.addEventListener('click', ()=>{
-            const ids = $$('.miq-row').filter(c=>c.checked).map(c=>c.value);
-            if(!ids.length) return alert('Select rows first');
-            if(!confirm('Delete selected subscribers?')) return;
-            fetch(ajaxurl, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-              body: new URLSearchParams({action:'miq_delete_subs', _ajax_nonce:nonce, ids})
-            }).then(r=>r.json()).then(j=>{
-              if(j.success) location.reload(); else alert('Delete failed');
-            });
-          });
-        })();
+                const all = $('#miq-check-all');
+                all && all.addEventListener('change', () => setChecks(all.checked));
+                selectAllBtn && selectAllBtn.addEventListener('click', () => setChecks(true));
+                deselectAllBtn && deselectAllBtn.addEventListener('click', () => setChecks(false));
+                const del = $('#miq-del-selected');
+                del && del.addEventListener('click', () => {
+                    const ids = $$('.miq-row').filter(c => c.checked).map(c => c.value);
+                    if (!ids.length) return alert('Select rows first');
+                    if (!confirm('Delete selected subscribers?')) return;
+                    fetch(ajaxurl, {
+                        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ action: 'miq_delete_subs', _ajax_nonce: nonce, ids })
+                    }).then(r => r.json()).then(j => {
+                        if (j.success) location.reload(); else alert('Delete failed');
+                    });
+                });
+            })();
         </script>
         <?php
     }
 
-    public function ajax_delete_subs(){
-        if(!current_user_can('manage_options')) {
+    public function ajax_delete_subs()
+    {
+        if (!current_user_can('manage_options')) {
             wp_send_json_error('No permission');
         }
         check_ajax_referer('miq_nonce');
@@ -193,18 +212,22 @@ class MI_Quiz_Plugin_AI {
             wp_send_json_error('No valid IDs provided.');
         }
 
-        global $wpdb; $table = $wpdb->prefix . self::TABLE_SUBSCRIBERS;
+        global $wpdb;
+        $table = $wpdb->prefix . self::TABLE_SUBSCRIBERS;
         $placeholders = implode(',', array_fill(0, count($ids), '%d'));
-        $res = $wpdb->query( $wpdb->prepare("DELETE FROM `$table` WHERE id IN ($placeholders)", $ids) );
+        $res = $wpdb->query($wpdb->prepare("DELETE FROM `$table` WHERE id IN ($placeholders)", $ids));
 
-        wp_send_json_success(['deleted' => (int)$res]);
+        wp_send_json_success(['deleted' => (int) $res]);
     }
 
-    public function ajax_export_subs(){
-        if(!current_user_can('manage_options')) wp_die('No permission');
+    public function ajax_export_subs()
+    {
+        if (!current_user_can('manage_options'))
+            wp_die('No permission');
         check_admin_referer('miq_nonce');
 
-        global $wpdb; $table = $wpdb->prefix . self::TABLE_SUBSCRIBERS;
+        global $wpdb;
+        $table = $wpdb->prefix . self::TABLE_SUBSCRIBERS;
         $rows = $wpdb->get_results("SELECT id,created_at,first_name,last_name,email,ip FROM `$table` ORDER BY id DESC", ARRAY_A);
 
         $filename = 'miq-subscribers-' . date('Ymd-His') . '.csv';
@@ -213,8 +236,8 @@ class MI_Quiz_Plugin_AI {
         header('Content-Disposition: attachment; filename=' . $filename);
 
         $out = fopen('php://output', 'w');
-        fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
-        fputcsv($out, ['id','created_at','first_name','last_name','email','ip']);
+        fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+        fputcsv($out, ['id', 'created_at', 'first_name', 'last_name', 'email', 'ip']);
         foreach ($rows as $r) {
             fputcsv($out, [$r['id'], $r['created_at'], $r['first_name'], $r['last_name'], $r['email'], $r['ip']]);
         }
@@ -228,7 +251,8 @@ class MI_Quiz_Plugin_AI {
      *
      * @param int $user_id The ID of the user being deleted.
      */
-    public function handle_user_deletion($user_id) {
+    public function handle_user_deletion($user_id)
+    {
         // Get user object before it's deleted to retrieve the email.
         $user = get_userdata($user_id);
         if (!$user) {
@@ -241,10 +265,11 @@ class MI_Quiz_Plugin_AI {
         $wpdb->delete($wpdb->prefix . self::TABLE_SUBSCRIBERS, ['email' => $email], ['%s']);
     }
 
-    public function ajax_magic_register() {
+    public function ajax_magic_register()
+    {
         check_ajax_referer('miq_nonce');
 
-        $email      = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+        $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
         $first_name = isset($_POST['first_name']) ? sanitize_text_field($_POST['first_name']) : '';
         $results_html = isset($_POST['results_html']) ? wp_kses_post(wp_unslash($_POST['results_html'])) : '';
         $results_data = isset($_POST['results_data']) ? json_decode(stripslashes($_POST['results_data']), true) : [];
@@ -289,16 +314,19 @@ class MI_Quiz_Plugin_AI {
             update_user_meta($user_id, 'miq_quiz_results', $results_data);
         }
 
-        global $wpdb; 
+        global $wpdb;
         $table = $wpdb->prefix . self::TABLE_SUBSCRIBERS;
-        $wpdb->query( $wpdb->prepare(
+        $wpdb->query($wpdb->prepare(
             "INSERT INTO `$table` (created_at, first_name, email, ip)
              VALUES (%s, %s, %s, %s)
              ON DUPLICATE KEY UPDATE 
                 created_at = VALUES(created_at),
                 first_name = VALUES(first_name),
                 ip         = VALUES(ip)", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-            current_time('mysql'), $first_name, $email, $_SERVER['REMOTE_ADDR'] ?? ''
+            current_time('mysql'),
+            $first_name,
+            $email,
+            $_SERVER['REMOTE_ADDR'] ?? ''
         ));
 
         // Send a single, comprehensive welcome email with results and a password reset link.
@@ -317,8 +345,7 @@ class MI_Quiz_Plugin_AI {
             $branding_logo = MC_Helpers::logo_url();
             $branding_html = '<div style="text-align:center; padding: 20px 0; border-bottom: 1px solid #ddd;">'
                 . '<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;"><tbody><tr>'
-                . '<td style="vertical-align:middle;">' . ($branding_logo ? '<img src="' . esc_url($branding_logo) . '" alt="Skill of Self-Discovery Logo" style="height: 45px; width: auto; border:0;" height="45">' : '') . '</td>'
-                . '<td style="vertical-align:middle; padding-left:15px;"><span style="font-size: 1.3em; font-weight: 600; color: #1a202c; line-height: 1.2;">Skill of Self-Discovery</span></td>'
+                . '<td style="vertical-align:middle; padding-left:15px;"><span style="font-size: 1.3em; font-weight: 600; color: #1a202c; line-height: 1.2;">What You\'re Good At</span></td>'
                 . '</tr></tbody></table></div>';
 
             // Build a more helpful email body for the user.
@@ -345,7 +372,7 @@ class MI_Quiz_Plugin_AI {
             $user_email_body .= '</div>';
             $user_email_body .= '</div></body></html>';
 
-            $subject_user = $this->maybe_antithread( 'Welcome! Your MI Quiz Results & Account Info' );
+            $subject_user = $this->maybe_antithread('Welcome! Your MI Quiz Results & Account Info');
             $headers_user = [
                 'Content-Type: text/html; charset=UTF-8',
                 sprintf('Reply-To: "%s" <%s>', $first_name, $email),
@@ -362,7 +389,7 @@ class MI_Quiz_Plugin_AI {
             if (!empty($admin_list_raw)) {
                 $admin_body = '<html><body style="font-family: sans-serif;">' . $branding_html;
                 $admin_body .= '<h1>Quiz results for ' . esc_html($first_name) . ' (' . esc_html($email) . ')</h1>' . $results_html . '</body></html>';
-                $subject_admin = $this->maybe_antithread( sprintf('[MI Quiz] Results for %s <%s>', $first_name, $email) );
+                $subject_admin = $this->maybe_antithread(sprintf('[MI Quiz] Results for %s <%s>', $first_name, $email));
                 $headers_admin = [
                     'Content-Type: text/html; charset=UTF-8',
                     sprintf('Reply-To: "%s" <%s>', $first_name, $email),
@@ -375,9 +402,10 @@ class MI_Quiz_Plugin_AI {
         wp_send_json_success('Account created! Your results have been emailed. Loading them now...');
     }
 
-    public function enqueue_assets() {
+    public function enqueue_assets()
+    {
         global $post;
-        if ( !is_a( $post, 'WP_Post' ) || !has_shortcode( $post->post_content, 'mi_quiz' ) ) {
+        if (!is_a($post, 'WP_Post') || !has_shortcode($post->post_content, 'mi_quiz')) {
             return;
         }
 
@@ -388,26 +416,26 @@ class MI_Quiz_Plugin_AI {
 
         // --- Load data just-in-time ---
         $questions_file = __DIR__ . '/mi-questions.php';
-        if ( file_exists( $questions_file ) ) {
+        if (file_exists($questions_file)) {
             require $questions_file; // defines $mi_categories, $mi_questions, etc. in *this* function's scope
         }
 
         // Load the new CDT prompts.
         $prompts_file = __DIR__ . '/mi-cdt-prompts.php';
         $mi_cdt_prompts = [];
-        if ( file_exists( $prompts_file ) ) {
+        if (file_exists($prompts_file)) {
             require $prompts_file;
         }
 
         // Prefer local vars (from the require), fall back to $GLOBALS, else empty array.
-        $cats   = $mi_categories          ?? $GLOBALS['mi_categories']          ?? [];
-        $q1     = $mi_questions           ?? $GLOBALS['mi_questions']           ?? [];
-        $q2     = $mi_part_two_questions  ?? $GLOBALS['mi_part_two_questions']  ?? [];
-        $career = $mi_career_suggestions  ?? $GLOBALS['mi_career_suggestions']  ?? [];
-        $lev    = $mi_leverage_tips       ?? $GLOBALS['mi_leverage_tips']       ?? [];
-        $grow   = $mi_growth_tips         ?? $GLOBALS['mi_growth_tips']         ?? [];
-        $skills = $mi_potential_skills    ?? $GLOBALS['mi_potential_skills']    ?? [];
-        $pairs  = $mi_pair_library        ?? $GLOBALS['mi_pair_library']        ?? [];
+        $cats = $mi_categories ?? $GLOBALS['mi_categories'] ?? [];
+        $q1 = $mi_questions ?? $GLOBALS['mi_questions'] ?? [];
+        $q2 = $mi_part_two_questions ?? $GLOBALS['mi_part_two_questions'] ?? [];
+        $career = $mi_career_suggestions ?? $GLOBALS['mi_career_suggestions'] ?? [];
+        $lev = $mi_leverage_tips ?? $GLOBALS['mi_leverage_tips'] ?? [];
+        $grow = $mi_growth_tips ?? $GLOBALS['mi_growth_tips'] ?? [];
+        $skills = $mi_potential_skills ?? $GLOBALS['mi_potential_skills'] ?? [];
+        $pairs = $mi_pair_library ?? $GLOBALS['mi_pair_library'] ?? [];
 
         $cdt_quiz_url = $this->_find_page_by_shortcode('cdt_quiz');
 
@@ -417,10 +445,10 @@ class MI_Quiz_Plugin_AI {
             $user = wp_get_current_user();
             $saved_results = get_user_meta($user->ID, 'miq_quiz_results', true);
             $user_data = [
-                'id'           => $user->ID,
-                'email'        => $user->user_email,
-                'firstName'    => $user->first_name,
-                'lastName'     => $user->last_name,
+                'id' => $user->ID,
+                'email' => $user->user_email,
+                'firstName' => $user->first_name,
+                'lastName' => $user->last_name,
                 'savedResults' => is_array($saved_results) && !empty($saved_results) ? $saved_results : null,
             ];
             if (class_exists('MC_User_Profile')) {
@@ -463,23 +491,23 @@ class MI_Quiz_Plugin_AI {
 
         $localized_data = [
             'currentUser' => $user_data,
-            'ajaxUrl'     => admin_url('admin-ajax.php'),
-            'ajaxNonce'   => wp_create_nonce('miq_nonce'),
-            'loginUrl'    => wp_login_url(get_permalink()),
-            'cdtQuizUrl'  => $cdt_quiz_url,
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'ajaxNonce' => wp_create_nonce('miq_nonce'),
+            'loginUrl' => wp_login_url(get_permalink()),
+            'cdtQuizUrl' => $cdt_quiz_url,
             'nextStepUrl' => $next_step_url,
             'nextStepTitle' => $next_step_title,
-            'ageGroup'    => $user_age_group,
-            'ageNonce'    => wp_create_nonce('mc_age_group'),
-            'data'        => [
-                'cats'   => $cats,
-                'q1'     => $q1,
-                'q2'     => $q2,
+            'ageGroup' => $user_age_group,
+            'ageNonce' => wp_create_nonce('mc_age_group'),
+            'data' => [
+                'cats' => $cats,
+                'q1' => $q1,
+                'q2' => $q2,
                 'career' => $career,
-                'lev'    => $lev,
-                'grow'   => $grow,
+                'lev' => $lev,
+                'grow' => $grow,
                 'skills' => $skills,
-                'pairs'  => $pairs,
+                'pairs' => $pairs,
                 'likert' => [1 => 'Not at all like me', 2 => 'Not really like me', 3 => 'Somewhat like me', 4 => 'Mostly like me', 5 => 'Very much like me'],
                 'cdtPrompts' => $mi_cdt_prompts,
             ],
@@ -493,42 +521,56 @@ class MI_Quiz_Plugin_AI {
      * Finds the permalink of the first page that contains a given shortcode.
      * A private copy of the core platform's method to avoid complex dependencies.
      */
-    private function _find_page_by_shortcode($shortcode_tag) {
-        if (empty($shortcode_tag)) return null;
+    private function _find_page_by_shortcode($shortcode_tag)
+    {
+        if (empty($shortcode_tag))
+            return null;
         $transient_key = 'page_url_for_' . $shortcode_tag;
-        if (false !== ($cached_url = get_transient($transient_key))) return $cached_url;
+        if (false !== ($cached_url = get_transient($transient_key)))
+            return $cached_url;
 
         $query = new WP_Query(['post_type' => ['page', 'post'], 'post_status' => 'publish', 'posts_per_page' => -1, 's' => '[' . $shortcode_tag]);
         $url = null;
         if ($query->have_posts()) {
-            foreach ($query->posts as $p) { if (has_shortcode($p->post_content, $shortcode_tag)) { $url = get_permalink($p->ID); break; } }
+            foreach ($query->posts as $p) {
+                if (has_shortcode($p->post_content, $shortcode_tag)) {
+                    $url = get_permalink($p->ID);
+                    break;
+                }
+            }
         }
         set_transient($transient_key, $url, DAY_IN_SECONDS);
         return $url;
     }
 
-    private function maybe_antithread($subject){
-        if ( ! get_option(self::OPT_ANTITHREAD, '1') ) return $subject;
+    private function maybe_antithread($subject)
+    {
+        if (!get_option(self::OPT_ANTITHREAD, '1'))
+            return $subject;
         $zw = "\xE2\x80\x8B";
-        return $subject . str_repeat($zw, wp_rand(1,3));
+        return $subject . str_repeat($zw, wp_rand(1, 3));
     }
 
-    public function ajax_email_results() {
+    public function ajax_email_results()
+    {
         check_ajax_referer('miq_nonce');
 
-        $email        = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
-        $first_name   = isset($_POST['first_name']) ? sanitize_text_field($_POST['first_name']) : '';
-        $last_name    = isset($_POST['last_name']) ? sanitize_text_field($_POST['last_name']) : '';
-        $last_name    = $last_name ?: '';
+        $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+        $first_name = isset($_POST['first_name']) ? sanitize_text_field($_POST['first_name']) : '';
+        $last_name = isset($_POST['last_name']) ? sanitize_text_field($_POST['last_name']) : '';
+        $last_name = $last_name ?: '';
         $results_html = isset($_POST['results_html']) ? wp_kses_post(wp_unslash($_POST['results_html'])) : '';
 
-        if ( ! is_email($email) )   wp_send_json_error('Invalid email address.');
-        if ( empty($first_name) )   wp_send_json_error('Please enter your first name.');
-        if ( empty($results_html) ) wp_send_json_error('No results data to send.');
+        if (!is_email($email))
+            wp_send_json_error('Invalid email address.');
+        if (empty($first_name))
+            wp_send_json_error('Please enter your first name.');
+        if (empty($results_html))
+            wp_send_json_error('No results data to send.');
 
-        $body = '<html><body><h1>Here are your quiz results:</h1>'.$results_html.'<p>Thank you for taking the quiz!</p></body></html>';
-        
-        $subject_user = $this->maybe_antithread( sprintf('Your MI Quiz Results — %s %s', $first_name, $last_name) );
+        $body = '<html><body><h1>Here are your quiz results:</h1>' . $results_html . '<p>Thank you for taking the quiz!</p></body></html>';
+
+        $subject_user = $this->maybe_antithread(sprintf('Your MI Quiz Results — %s %s', $first_name, $last_name));
         $headers_user = [
             'Content-Type: text/html; charset=UTF-8',
             sprintf('Reply-To: "%s %s" <%s>', $first_name, $last_name, $email),
@@ -540,34 +582,37 @@ class MI_Quiz_Plugin_AI {
 
         $admin_to = '';
         foreach ($admin_list_raw as $addr) {
-            if ( strcasecmp($addr, $email) !== 0 ) { $admin_to = $addr; break; }
+            if (strcasecmp($addr, $email) !== 0) {
+                $admin_to = $addr;
+                break;
+            }
         }
-        if ( empty($admin_to) ) {
+        if (empty($admin_to)) {
             $fallback = get_option('admin_email');
-            if ( is_email($fallback) && strcasecmp($fallback, $email) !== 0 ) {
+            if (is_email($fallback) && strcasecmp($fallback, $email) !== 0) {
                 $admin_to = $fallback;
             }
         }
 
-        $bcc = array_values(array_filter($admin_list_raw, function($addr) use ($admin_to, $email){
+        $bcc = array_values(array_filter($admin_list_raw, function ($addr) use ($admin_to, $email) {
             return strcasecmp($addr, $admin_to) !== 0 && strcasecmp($addr, $email) !== 0;
         }));
 
-        if ( ! empty($admin_to) ) {
-            $subject_admin = $this->maybe_antithread( sprintf('[MI Quiz] Results for %s %s <%s>', $first_name, $last_name, $email) );
+        if (!empty($admin_to)) {
+            $subject_admin = $this->maybe_antithread(sprintf('[MI Quiz] Results for %s %s <%s>', $first_name, $last_name, $email));
             $headers_admin = [
                 'Content-Type: text/html; charset=UTF-8',
                 sprintf('Reply-To: "%s %s" <%s>', $first_name, $last_name, $email),
             ];
-            if ( ! empty($bcc) ) {
+            if (!empty($bcc)) {
                 $headers_admin[] = 'Bcc: ' . implode(', ', $bcc);
             }
             wp_mail($admin_to, $subject_admin, $body, $headers_admin);
         }
 
-        global $wpdb; 
+        global $wpdb;
         $table = $wpdb->prefix . self::TABLE_SUBSCRIBERS;
-        $wpdb->query( $wpdb->prepare(
+        $wpdb->query($wpdb->prepare(
             "INSERT INTO `$table` (created_at, first_name, last_name, email, ip)
              VALUES (%s, %s, %s, %s, %s)
              ON DUPLICATE KEY UPDATE 
@@ -575,15 +620,21 @@ class MI_Quiz_Plugin_AI {
                 first_name = VALUES(first_name),
                 last_name  = VALUES(last_name),
                 ip         = VALUES(ip)", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-            current_time('mysql'), $first_name, $last_name, $email, $_SERVER['REMOTE_ADDR'] ?? ''
+            current_time('mysql'),
+            $first_name,
+            $last_name,
+            $email,
+            $_SERVER['REMOTE_ADDR'] ?? ''
         ));
 
-        if ($sent_user) wp_send_json_success('Your results have been sent! Check your inbox.');
+        if ($sent_user)
+            wp_send_json_success('Your results have been sent! Check your inbox.');
         wp_send_json_error('The email could not be sent. Please try again later.');
     }
 
     /** Shortcode output (HTML only) */
-    public function render_quiz() {
+    public function render_quiz()
+    {
         // Assets are now enqueued conditionally in enqueue_assets(),
         // so these calls are no longer needed here.
         $dashboard_url = $this->_find_page_by_shortcode('quiz_dashboard');
@@ -601,176 +652,204 @@ class MI_Quiz_Plugin_AI {
             <?php if ($dashboard_url): ?>
                 <div class="back-bar" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                     <a href="<?php echo esc_url($dashboard_url); ?>" class="back-link">&larr; Return to Dashboard</a>
-                    <button type="button" id="mi-about-top" class="mi-quiz-button mi-quiz-button-secondary" onclick="return window._miAboutToggle ? window._miAboutToggle(event) : (function(e){ e&&e.preventDefault&&e.preventDefault(); var m=document.getElementById('mi-about-modal'), r=document.getElementById('mi-quiz-results'), c=document.getElementById('mi-quiz-container'); if(!m) return false; var show=(m.style.display==='none'||!m.style.display); if(show){ if(r){ m.dataset.prevRes=(r.style.display||''); r.style.display='none'; } if(c){ m.dataset.prevCont=(c.style.display||''); c.style.display='none'; } m.style.display='block'; } else { m.style.display='none'; if(r && ('prevRes' in m.dataset)) r.style.display=m.dataset.prevRes; if(c && ('prevCont' in m.dataset)) c.style.display=m.dataset.prevCont; } return false; })(event)">About</button>
+                    <button type="button" id="mi-about-top" class="mi-quiz-button mi-quiz-button-secondary"
+                        onclick="return window._miAboutToggle ? window._miAboutToggle(event) : (function(e){ e&&e.preventDefault&&e.preventDefault(); var m=document.getElementById('mi-about-modal'), r=document.getElementById('mi-quiz-results'), c=document.getElementById('mi-quiz-container'); if(!m) return false; var show=(m.style.display==='none'||!m.style.display); if(show){ if(r){ m.dataset.prevRes=(r.style.display||''); r.style.display='none'; } if(c){ m.dataset.prevCont=(c.style.display||''); c.style.display='none'; } m.style.display='block'; } else { m.style.display='none'; if(r && ('prevRes' in m.dataset)) r.style.display=m.dataset.prevRes; if(c && ('prevCont' in m.dataset)) c.style.display=m.dataset.prevCont; } return false; })(event)">About</button>
                 </div>
             <?php endif; ?>
             <!-- Staging screen -->
             <div id="mi-stage" class="mi-quiz-card">
-              <h2 class="mi-section-title">Map Your Natural Strengths</h2>
-              <div class="stage-intro">
-                <p>Discover how you learn best across 8 intelligences. Your MI profile powers better decisions and feeds Lab Mode (AI‑assisted experiments).</p>
-                <h3>How It Works</h3>
-                <ul>
-                  <li>Answer quick statements about how you prefer to learn and problem‑solve.</li>
-                  <li>We identify your top intelligences and connect them to strengths you can use right away.</li>
-                  <li>Finish to unlock Lab Mode — AI‑assisted, short experiments tailored to your profile.</li>
-                </ul>
-              </div>
-              <div style="text-align:center; margin-top: 1em;">
-                <button type="button" id="mi-stage-start" class="mi-quiz-button mi-quiz-button-primary">Start MI Quiz</button>
-              </div>
+                <h2 class="mi-section-title">Map Your Natural Strengths</h2>
+                <div class="stage-intro">
+                    <p>Discover how you learn best across 8 intelligences. Your MI profile powers better decisions and feeds Lab
+                        Mode (AI‑assisted experiments).</p>
+                    <h3>How It Works</h3>
+                    <ul>
+                        <li>Answer quick statements about how you prefer to learn and problem‑solve.</li>
+                        <li>We identify your top intelligences and connect them to strengths you can use right away.</li>
+                        <li>Finish to unlock Lab Mode — AI‑assisted, short experiments tailored to your profile.</li>
+                    </ul>
+                </div>
+                <div style="text-align:center; margin-top: 1em;">
+                    <button type="button" id="mi-stage-start" class="mi-quiz-button mi-quiz-button-primary">Start MI
+                        Quiz</button>
+                </div>
             </div>
 
             <div id="mi-quiz-container" style="display:none;">
-              <div id="mi-age-gate">
-                <div class="mi-quiz-card">
-                  <h2 class="mi-section-title">Welcome!</h2>
-                  <p>To tailor the questions for you, please select the option that best describes you:</p>
-                  <div class="mi-age-options">
-                    <button type="button" class="mi-quiz-button" data-age-group="teen">Teen / High School</button>
-                    <button type="button" class="mi-quiz-button" data-age-group="graduate">Student / Recent Graduate</button>
-                    <button type="button" class="mi-quiz-button" data-age-group="adult">Adult / Professional</button>
-                  </div>
-                  <div class="mi-quiz-notice">
-                    <?php if (is_user_logged_in()): ?>
-                        <p>Welcome back! At the end of the quiz, your results will be automatically emailed to your account address and saved to your profile.</p>
-                    <?php else: ?>
-                        <p>This quiz is the first step toward unlocking your potential. At the end, you'll receive a comprehensive report detailing your top intelligences and a personalized action plan to help you grow. To view your results and save your progress, simply enter your name and email to create your free account.</p>
-                    <?php endif; ?>
-                  </div>
-                </div>
-              </div>
-
-              <div id="mi-dev-tools" style="display:none;">
-                <strong>Dev tools:</strong>
-                <button type="button" id="mi-autofill-run" class="mi-quiz-button mi-quiz-button-small">Auto-Fill</button>
-              </div>
-
-              <form id="mi-quiz-form-part1" style="display:none;"></form>
-
-              <div id="mi-quiz-intermission" style="display:none;">
-                <h2 class="mi-section-title">Your Top Intelligences</h2>
-                <p>Based on your answers, these are your top three intelligences:</p>
-                <ul id="mi-top3-list"></ul>
-                <p>Now, let's explore these three areas in more detail.</p>
-                <button type="button" id="mi-start-part2" class="mi-quiz-button">Start Part 2</button>
-              </div>
-
-              <form id="mi-quiz-form-part2" style="display:none;"></form>
-              <div id="mi-quiz-results" style="display:none;"></div>
-              <!-- Lab Mode Updated: <?php echo time(); ?> -->
-              
-              <!-- Lab Mode Section -->
-              <div id="mi-lab-mode" style="display:none;">
-                <div class="mi-quiz-card">
-                  <h2 class="mi-section-title">🧪 Lab Mode: Design Your Learning Experiments</h2>
-                  <p>Based on your intelligence profile, design personalized experiments to explore and develop your strengths.</p>
-                  
-                  <!-- Lab Mode Form -->
-                  <div id="mi-lab-form-container">
-                    <form id="mi-lab-form">
-                      <div class="mi-form-section">
-                        <h3>Setup Your Learning Environment</h3>
-                        
-                        <div class="mi-form-field">
-                          <label for="mi-curiosity-1">What are you most curious about right now? (3 areas)</label>
-                          <div class="mi-input-group">
-                            <input type="text" id="mi-curiosity-1" placeholder="e.g., How to improve my communication skills">
-                            <button type="button" class="mi-quick-select-btn" data-examples="curiosity">💡</button>
-                          </div>
+                <div id="mi-age-gate">
+                    <div class="mi-quiz-card">
+                        <h2 class="mi-section-title">Welcome!</h2>
+                        <p>To tailor the questions for you, please select the option that best describes you:</p>
+                        <div class="mi-age-options">
+                            <button type="button" class="mi-quiz-button" data-age-group="teen">Teen / High School</button>
+                            <button type="button" class="mi-quiz-button" data-age-group="graduate">Student / Recent
+                                Graduate</button>
+                            <button type="button" class="mi-quiz-button" data-age-group="adult">Adult / Professional</button>
                         </div>
-                        
-                        <div class="mi-form-field">
-                          <div class="mi-input-group">
-                            <input type="text" id="mi-curiosity-2" placeholder="e.g., Understanding different learning styles">
-                            <button type="button" class="mi-quick-select-btn" data-examples="curiosity">💡</button>
-                          </div>
+                        <div class="mi-quiz-notice">
+                            <?php if (is_user_logged_in()): ?>
+                                <p>Welcome back! At the end of the quiz, your results will be automatically emailed to your account
+                                    address and saved to your profile.</p>
+                            <?php else: ?>
+                                <p>This quiz is the first step toward unlocking your potential. At the end, you'll receive a
+                                    comprehensive report detailing your top intelligences and a personalized action plan to help you
+                                    grow. To view your results and save your progress, simply enter your name and email to create
+                                    your free account.</p>
+                            <?php endif; ?>
                         </div>
-                        
-                        <div class="mi-form-field">
-                          <div class="mi-input-group">
-                            <input type="text" id="mi-curiosity-3" placeholder="e.g., Exploring creative problem-solving techniques">
-                            <button type="button" class="mi-quick-select-btn" data-examples="curiosity">💡</button>
-                          </div>
-                        </div>
-                        
-                        <div class="mi-form-field">
-                          <label for="mi-role-models">Who are some people you admire? (3 role models)</label>
-                          <div class="mi-input-group">
-                            <input type="text" id="mi-role-model-1" placeholder="e.g., Maya Angelou">
-                            <button type="button" class="mi-quick-select-btn" data-examples="roleModel">💡</button>
-                          </div>
-                        </div>
-                        
-                        <div class="mi-form-field">
-                          <div class="mi-input-group">
-                            <input type="text" id="mi-role-model-2" placeholder="e.g., Steve Jobs">
-                            <button type="button" class="mi-quick-select-btn" data-examples="roleModel">💡</button>
-                          </div>
-                        </div>
-                        
-                        <div class="mi-form-field">
-                          <div class="mi-input-group">
-                            <input type="text" id="mi-role-model-3" placeholder="e.g., Marie Curie">
-                            <button type="button" class="mi-quick-select-btn" data-examples="roleModel">💡</button>
-                          </div>
-                        </div>
-                        
-                        <div class="mi-form-field">
-                          <label for="mi-context-tags">Context Tags (comma-separated)</label>
-                          <div class="mi-input-group">
-                            <input type="text" id="mi-context-tags" placeholder="e.g., creative, analytical, social, hands-on">
-                            <button type="button" class="mi-quick-select-btn" data-examples="contextTag">💡</button>
-                          </div>
-                          <small>Add tags that describe your preferred learning contexts and approaches</small>
-                        </div>
-                      </div>
-                      
-                      <!-- CDT Qualifiers Section -->
-                      <div class="mi-form-section">
-                        <h3>Cognitive Diversity Growth Areas</h3>
-                        <p>For your lowest 2 CDT dimensions (growth areas):</p>
-                        <p><em>Select the challenge that resonates most for each dimension:</em></p>
-                        
-                        <div id="mi-cdt-challenges-container">
-                          <!-- CDT challenge options will be populated by JavaScript -->
-                        </div>
-                      </div>
-                      
-                      <div class="mi-form-actions">
-                        <button type="button" id="mi-generate-experiments" class="mi-quiz-button mi-quiz-button-primary">Generate Learning Experiments</button>
-                        <div id="mi-form-validation-message" class="form-validation-message"></div>
-                      </div>
-                    </form>
-                  </div>
-                  
-                  <!-- Generated Experiments Display -->
-                  <div id="mi-experiments-container" style="display:none;">
-                    <div class="mi-experiments-header">
-                      <h3>Your Personalized Learning Experiments</h3>
-                      <div class="mi-experiments-actions">
-                        <button type="button" id="mi-modify-constraints" class="mi-quiz-button mi-quiz-button-secondary">Modify Constraints & Regenerate All</button>
-                        <button type="button" id="mi-start-over" class="mi-quiz-button mi-quiz-button-secondary">Start Over</button>
-                      </div>
                     </div>
-                    <div id="mi-experiments-list"></div>
-                  </div>
-                  
-                  <!-- Running Experiment Display -->
-                  <div id="mi-running-experiment" style="display:none;">
-                    <div class="mi-experiment-header">
-                      <button type="button" id="mi-back-to-experiments" class="mi-quiz-button mi-quiz-button-secondary">&larr; Back to Experiments</button>
-                      <h3 id="mi-running-experiment-title"></h3>
-                    </div>
-                    <div id="mi-running-experiment-content"></div>
-                  </div>
                 </div>
-              </div>
+
+                <div id="mi-dev-tools" style="display:none;">
+                    <strong>Dev tools:</strong>
+                    <button type="button" id="mi-autofill-run" class="mi-quiz-button mi-quiz-button-small">Auto-Fill</button>
+                </div>
+
+                <form id="mi-quiz-form-part1" style="display:none;"></form>
+
+                <div id="mi-quiz-intermission" style="display:none;">
+                    <h2 class="mi-section-title">Your Top Intelligences</h2>
+                    <p>Based on your answers, these are your top three intelligences:</p>
+                    <ul id="mi-top3-list"></ul>
+                    <p>Now, let's explore these three areas in more detail.</p>
+                    <button type="button" id="mi-start-part2" class="mi-quiz-button">Start Part 2</button>
+                </div>
+
+                <form id="mi-quiz-form-part2" style="display:none;"></form>
+                <div id="mi-quiz-results" style="display:none;"></div>
+                <!-- Lab Mode Updated: <?php echo time(); ?> -->
+
+                <!-- Lab Mode Section -->
+                <div id="mi-lab-mode" style="display:none;">
+                    <div class="mi-quiz-card">
+                        <h2 class="mi-section-title">🧪 Lab Mode: Design Your Learning Experiments</h2>
+                        <p>Based on your intelligence profile, design personalized experiments to explore and develop your
+                            strengths.</p>
+
+                        <!-- Lab Mode Form -->
+                        <div id="mi-lab-form-container">
+                            <form id="mi-lab-form">
+                                <div class="mi-form-section">
+                                    <h3>Setup Your Learning Environment</h3>
+
+                                    <div class="mi-form-field">
+                                        <label for="mi-curiosity-1">What are you most curious about right now? (3 areas)</label>
+                                        <div class="mi-input-group">
+                                            <input type="text" id="mi-curiosity-1"
+                                                placeholder="e.g., How to improve my communication skills">
+                                            <button type="button" class="mi-quick-select-btn"
+                                                data-examples="curiosity">💡</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="mi-form-field">
+                                        <div class="mi-input-group">
+                                            <input type="text" id="mi-curiosity-2"
+                                                placeholder="e.g., Understanding different learning styles">
+                                            <button type="button" class="mi-quick-select-btn"
+                                                data-examples="curiosity">💡</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="mi-form-field">
+                                        <div class="mi-input-group">
+                                            <input type="text" id="mi-curiosity-3"
+                                                placeholder="e.g., Exploring creative problem-solving techniques">
+                                            <button type="button" class="mi-quick-select-btn"
+                                                data-examples="curiosity">💡</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="mi-form-field">
+                                        <label for="mi-role-models">Who are some people you admire? (3 role models)</label>
+                                        <div class="mi-input-group">
+                                            <input type="text" id="mi-role-model-1" placeholder="e.g., Maya Angelou">
+                                            <button type="button" class="mi-quick-select-btn"
+                                                data-examples="roleModel">💡</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="mi-form-field">
+                                        <div class="mi-input-group">
+                                            <input type="text" id="mi-role-model-2" placeholder="e.g., Steve Jobs">
+                                            <button type="button" class="mi-quick-select-btn"
+                                                data-examples="roleModel">💡</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="mi-form-field">
+                                        <div class="mi-input-group">
+                                            <input type="text" id="mi-role-model-3" placeholder="e.g., Marie Curie">
+                                            <button type="button" class="mi-quick-select-btn"
+                                                data-examples="roleModel">💡</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="mi-form-field">
+                                        <label for="mi-context-tags">Context Tags (comma-separated)</label>
+                                        <div class="mi-input-group">
+                                            <input type="text" id="mi-context-tags"
+                                                placeholder="e.g., creative, analytical, social, hands-on">
+                                            <button type="button" class="mi-quick-select-btn"
+                                                data-examples="contextTag">💡</button>
+                                        </div>
+                                        <small>Add tags that describe your preferred learning contexts and approaches</small>
+                                    </div>
+                                </div>
+
+                                <!-- CDT Qualifiers Section -->
+                                <div class="mi-form-section">
+                                    <h3>Cognitive Diversity Growth Areas</h3>
+                                    <p>For your lowest 2 CDT dimensions (growth areas):</p>
+                                    <p><em>Select the challenge that resonates most for each dimension:</em></p>
+
+                                    <div id="mi-cdt-challenges-container">
+                                        <!-- CDT challenge options will be populated by JavaScript -->
+                                    </div>
+                                </div>
+
+                                <div class="mi-form-actions">
+                                    <button type="button" id="mi-generate-experiments"
+                                        class="mi-quiz-button mi-quiz-button-primary">Generate Learning Experiments</button>
+                                    <div id="mi-form-validation-message" class="form-validation-message"></div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Generated Experiments Display -->
+                        <div id="mi-experiments-container" style="display:none;">
+                            <div class="mi-experiments-header">
+                                <h3>Your Personalized Learning Experiments</h3>
+                                <div class="mi-experiments-actions">
+                                    <button type="button" id="mi-modify-constraints"
+                                        class="mi-quiz-button mi-quiz-button-secondary">Modify Constraints & Regenerate
+                                        All</button>
+                                    <button type="button" id="mi-start-over"
+                                        class="mi-quiz-button mi-quiz-button-secondary">Start Over</button>
+                                </div>
+                            </div>
+                            <div id="mi-experiments-list"></div>
+                        </div>
+
+                        <!-- Running Experiment Display -->
+                        <div id="mi-running-experiment" style="display:none;">
+                            <div class="mi-experiment-header">
+                                <button type="button" id="mi-back-to-experiments"
+                                    class="mi-quiz-button mi-quiz-button-secondary">&larr; Back to Experiments</button>
+                                <h3 id="mi-running-experiment-title"></h3>
+                            </div>
+                            <div id="mi-running-experiment-content"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div id="mi-about-modal" class="mi-quiz-card mi-quiz-intro quiz-about-card" style="display:none; text-align:left; max-width:840px; margin:16px auto;">
+        <div id="mi-about-modal" class="mi-quiz-card mi-quiz-intro quiz-about-card"
+            style="display:none; text-align:left; max-width:840px; margin:16px auto;">
             <h2 class="mi-section-title">About the MI Quiz</h2>
-            <p>The Multiple Intelligences (MI) quiz helps you understand the kinds of problems you’re best at solving by mapping your strengths across eight intelligences. These patterns influence which learning paths feel natural, which projects energize you, and which study habits actually stick.</p>
+            <p>The Multiple Intelligences (MI) quiz helps you understand the kinds of problems you’re best at solving by mapping
+                your strengths across eight intelligences. These patterns influence which learning paths feel natural, which
+                projects energize you, and which study habits actually stick.</p>
 
             <h3>What it measures</h3>
             <ul>
@@ -805,36 +884,36 @@ class MI_Quiz_Plugin_AI {
             </ul>
         </div>
         <script>
-        (function(){
-            function getModal(){ return document.getElementById('mi-about-modal'); }
-            function toggle(){
-                var m = getModal(); if (!m) return false;
-                var results = document.getElementById('mi-quiz-results');
-                var container = document.getElementById('mi-quiz-container');
-                var show = (m.style.display==='none' || !m.style.display);
-                if (show) {
-                    if (results) { m.dataset.prevRes = results.style.display || ''; results.style.display = 'none'; }
-                    if (container) { m.dataset.prevCont = container.style.display || ''; container.style.display = 'none'; }
-                    m.style.display = 'block';
-                } else {
-                    m.style.display = 'none';
-                    if (results && ('prevRes' in m.dataset)) results.style.display = m.dataset.prevRes;
-                    if (container && ('prevCont' in m.dataset)) container.style.display = m.dataset.prevCont;
+            (function () {
+                function getModal() { return document.getElementById('mi-about-modal'); }
+                function toggle() {
+                    var m = getModal(); if (!m) return false;
+                    var results = document.getElementById('mi-quiz-results');
+                    var container = document.getElementById('mi-quiz-container');
+                    var show = (m.style.display === 'none' || !m.style.display);
+                    if (show) {
+                        if (results) { m.dataset.prevRes = results.style.display || ''; results.style.display = 'none'; }
+                        if (container) { m.dataset.prevCont = container.style.display || ''; container.style.display = 'none'; }
+                        m.style.display = 'block';
+                    } else {
+                        m.style.display = 'none';
+                        if (results && ('prevRes' in m.dataset)) results.style.display = m.dataset.prevRes;
+                        if (container && ('prevCont' in m.dataset)) container.style.display = m.dataset.prevCont;
+                    }
+                    return false;
                 }
-                return false;
-            }
-            function bind(){
-                var btn = document.getElementById('mi-about-top');
-                if (btn && !btn.getAttribute('data-about-bound')){
-                    btn.addEventListener('click', function(e){ e.preventDefault(); toggle(); });
-                    btn.setAttribute('data-about-bound','1');
+                function bind() {
+                    var btn = document.getElementById('mi-about-top');
+                    if (btn && !btn.getAttribute('data-about-bound')) {
+                        btn.addEventListener('click', function (e) { e.preventDefault(); toggle(); });
+                        btn.setAttribute('data-about-bound', '1');
+                    }
                 }
-            }
-            if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', bind); } else { bind(); }
-            // Delegated safety net for builders (Elementor, etc.)
-            document.addEventListener('click', function(e){ if (e.target && (e.target.id === 'mi-about-top' || (e.target.closest && e.target.closest('#mi-about-top')))) { e.preventDefault(); toggle(); } }, true);
-            window._miAboutToggle = function(e){ if (e && e.preventDefault) e.preventDefault(); return toggle(); };
-        })();
+                if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', bind); } else { bind(); }
+                // Delegated safety net for builders (Elementor, etc.)
+                document.addEventListener('click', function (e) { if (e.target && (e.target.id === 'mi-about-top' || (e.target.closest && e.target.closest('#mi-about-top')))) { e.preventDefault(); toggle(); } }, true);
+                window._miAboutToggle = function (e) { if (e && e.preventDefault) e.preventDefault(); return toggle(); };
+            })();
         </script>
         <div class="quiz-wrapper quiz-funnel-card" style="margin: 2em auto;">
             <div class="mi-quiz-card">
@@ -843,22 +922,50 @@ class MI_Quiz_Plugin_AI {
             </div>
         </div>
         <style>
-        /* Unified About card styling (shared across quizzes) */
-        .quiz-about-card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:2rem; }
-        .quiz-about-card h2 { margin:0 0 1rem 0; color:#1a202c; font-size:1.75rem; }
-        .quiz-about-card h3 { margin:1.5rem 0 0.75rem 0; color:#2d3748; font-size:1.25rem; }
-        .quiz-about-card p { line-height:1.6; margin-bottom:1rem; color:#4a5568; }
-        .quiz-about-card ul { margin:0.75rem 0 1.5rem 1.5rem; }
-        .quiz-about-card li { margin-bottom:0.5rem; line-height:1.5; }
+            /* Unified About card styling (shared across quizzes) */
+            .quiz-about-card {
+                background: #fff;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                padding: 2rem;
+            }
+
+            .quiz-about-card h2 {
+                margin: 0 0 1rem 0;
+                color: #1a202c;
+                font-size: 1.75rem;
+            }
+
+            .quiz-about-card h3 {
+                margin: 1.5rem 0 0.75rem 0;
+                color: #2d3748;
+                font-size: 1.25rem;
+            }
+
+            .quiz-about-card p {
+                line-height: 1.6;
+                margin-bottom: 1rem;
+                color: #4a5568;
+            }
+
+            .quiz-about-card ul {
+                margin: 0.75rem 0 1.5rem 1.5rem;
+            }
+
+            .quiz-about-card li {
+                margin-bottom: 0.5rem;
+                line-height: 1.5;
+            }
         </style>
         <?php
         return ob_get_clean();
     }
 
-    public function ajax_save_user_results() {
+    public function ajax_save_user_results()
+    {
         check_ajax_referer('miq_nonce');
 
-        $userId  = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+        $userId = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
         $results = isset($_POST['results']) ? json_decode(stripslashes($_POST['results']), true) : [];
 
         if (!$userId || !is_array($results)) {
@@ -868,7 +975,36 @@ class MI_Quiz_Plugin_AI {
         $results['completed_at'] = time(); // Add timestamp
         update_user_meta($userId, 'miq_quiz_results', $results);
 
-        wp_send_json_success('Results saved to user profile.');
+        // Calculate next step URL based on updated completion status
+        $next_step_url = '';
+        $next_step_title = '';
+        if (class_exists('MC_Funnel')) {
+            // Clear cache to ensure fresh completion status
+            MC_Funnel::clear_all_dashboard_caches();
+
+            $config = MC_Funnel::get_config();
+            $completion = MC_Funnel::get_completion_status($userId);
+
+            foreach (($config['steps'] ?? []) as $slug) {
+                if (empty($completion[$slug])) {
+                    $maybe = MC_Funnel::get_step_url($slug);
+                    if ($maybe) {
+                        $next_step_url = $maybe;
+                        $next_step_title = 'Next Step: ' . ($config['titles'][$slug] ?? ucfirst(str_replace('-', ' ', $slug)));
+                        break;
+                    }
+                }
+            }
+
+            // Trigger centralized completion check
+            MC_Funnel::check_completion_and_notify($userId);
+        }
+
+        wp_send_json_success([
+            'message' => 'Results saved to user profile.',
+            'nextStepUrl' => $next_step_url,
+            'nextStepTitle' => $next_step_title
+        ]);
     }
 
     /**
@@ -877,7 +1013,8 @@ class MI_Quiz_Plugin_AI {
      * @param string $results_html The HTML content of the results.
      * @return string|null The full server path to the generated PDF, or null on failure.
      */
-    private function _generate_pdf_for_attachment($results_html) {
+    private function _generate_pdf_for_attachment($results_html)
+    {
         if (!class_exists('Dompdf\Dompdf') || empty($results_html)) {
             return null;
         }
@@ -907,13 +1044,16 @@ class MI_Quiz_Plugin_AI {
         // Save to a temporary file in the uploads directory
         $upload_dir = wp_upload_dir();
         $temp_dir = trailingslashit($upload_dir['basedir']) . 'mi-quiz-pdfs';
-        if (!file_exists($temp_dir)) { wp_mkdir_p($temp_dir); }
+        if (!file_exists($temp_dir)) {
+            wp_mkdir_p($temp_dir);
+        }
 
         $filepath = trailingslashit($temp_dir) . 'mi-results-' . wp_generate_password(12, false) . '.pdf';
         return file_put_contents($filepath, $pdf_content) ? $filepath : null;
     }
 
-    public function ajax_generate_pdf() {
+    public function ajax_generate_pdf()
+    {
         check_ajax_referer('miq_nonce');
 
         if (!class_exists('Dompdf\Dompdf')) {
@@ -951,16 +1091,17 @@ class MI_Quiz_Plugin_AI {
         exit;
     }
 
-    public function ajax_delete_user_results() {
+    public function ajax_delete_user_results()
+    {
         check_ajax_referer('miq_nonce');
 
-        if ( ! is_user_logged_in() ) {
+        if (!is_user_logged_in()) {
             wp_send_json_error('You must be logged in to delete results.');
         }
 
         $user_id = get_current_user_id();
 
-        if ( delete_user_meta($user_id, 'miq_quiz_results') ) {
+        if (delete_user_meta($user_id, 'miq_quiz_results')) {
             wp_send_json_success('Your results have been deleted.');
         } else {
             // This can happen if meta didn't exist, which is not an error in this context.

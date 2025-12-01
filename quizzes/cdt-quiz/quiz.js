@@ -1,4 +1,4 @@
-(function() {
+(function () {
     // --- Debugging: Log the raw data received from PHP ---
     console.log('CDT Quiz Data Received:', typeof cdt_quiz_data !== 'undefined' ? cdt_quiz_data : 'Error: cdt_quiz_data is not defined.');
     if (typeof cdt_quiz_data === 'undefined') { return; }
@@ -176,36 +176,36 @@
             statusEl.style.color = 'inherit';
             regBtn.disabled = true;
 
-            const body = new URLSearchParams({ 
+            const body = new URLSearchParams({
                 action: 'miq_magic_register',
-                _ajax_nonce: data.miqNonce, 
-                email: email, 
-                first_name: firstName, 
+                _ajax_nonce: data.miqNonce,
+                email: email,
+                first_name: firstName,
                 results_html: '',
                 results_data: JSON.stringify(quizState)
             });
 
             fetch(ajaxUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })
-            .then(r => r.json())
-            .then(j => {
-                if (j.success) {
-                    statusEl.innerHTML = j.data;
-                    statusEl.style.color = 'green';
-                    setTimeout(() => window.location.reload(), 1500);
-                } else {
-                    let errorMsg = 'An unknown error occurred. Please try again.';
-                    if (j.data) {
-                        errorMsg = typeof j.data === 'string' ? j.data : (j.data.message || JSON.stringify(j.data));
+                .then(r => r.json())
+                .then(j => {
+                    if (j.success) {
+                        statusEl.innerHTML = j.data;
+                        statusEl.style.color = 'green';
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        let errorMsg = 'An unknown error occurred. Please try again.';
+                        if (j.data) {
+                            errorMsg = typeof j.data === 'string' ? j.data : (j.data.message || JSON.stringify(j.data));
+                        }
+                        statusEl.innerHTML = 'Error: ' + errorMsg;
+                        statusEl.style.color = 'red';
+                        regBtn.disabled = false;
                     }
-                    statusEl.innerHTML = 'Error: ' + errorMsg;
+                }).catch(() => {
+                    statusEl.innerHTML = 'An unexpected error occurred. Please try again.';
                     statusEl.style.color = 'red';
                     regBtn.disabled = false;
-                }
-            }).catch(() => {
-                statusEl.innerHTML = 'An unexpected error occurred. Please try again.';
-                statusEl.style.color = 'red';
-                regBtn.disabled = false;
-            });
+                });
         });
     }
 
@@ -258,14 +258,14 @@
         container.querySelectorAll('.cdt-quiz-button[data-age-group]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 quizState.ageGroup = e.currentTarget.dataset.ageGroup;
-                try { localStorage.setItem('mc_age_group', quizState.ageGroup); } catch(e) {}
+                try { localStorage.setItem('mc_age_group', quizState.ageGroup); } catch (e) { }
                 renderQuiz();
             });
         });
     }
 
-    function getUrlAge(){
-        try { const p=new URLSearchParams(window.location.search); return p.get('age'); } catch(e){ return null; }
+    function getUrlAge() {
+        try { const p = new URLSearchParams(window.location.search); return p.get('age'); } catch (e) { return null; }
     }
 
     function renderQuiz() {
@@ -356,7 +356,7 @@
                 // Use four-equal layout so tiles look balanced
                 innerHtml += `<div class="cdt-quiz-likert-options cdt-four-equal">`;
                 q.options.forEach((opt, idx) => {
-                    innerHtml += `<label class="cdt-quiz-option-wrapper"><input type="radio" name="q_${i}" value="${idx}" data-score="${parseInt(opt.score,10)||0}" required><span>${opt.text}</span></label>`;
+                    innerHtml += `<label class="cdt-quiz-option-wrapper"><input type="radio" name="q_${i}" value="${idx}" data-score="${parseInt(opt.score, 10) || 0}" required><span>${opt.text}</span></label>`;
                 });
                 innerHtml += `</div>`;
                 // Encode a hint for max computation
@@ -365,7 +365,7 @@
                 // Two-option forced choice: mark container for equalized layout
                 innerHtml += `<div class="cdt-quiz-likert-options cdt-two-equal">`;
                 q.options.forEach((opt, idx) => {
-                    innerHtml += `<label class="cdt-quiz-option-wrapper"><input type="radio" name="q_${i}" value="${idx}" data-score="${parseInt(opt.score,10)||0}" required><span>${opt.text}</span></label>`;
+                    innerHtml += `<label class="cdt-quiz-option-wrapper"><input type="radio" name="q_${i}" value="${idx}" data-score="${parseInt(opt.score, 10) || 0}" required><span>${opt.text}</span></label>`;
                 });
                 innerHtml += `</div>`;
                 stepAttrs.push('data-max-base="3"');
@@ -450,7 +450,7 @@
             if (type === 'scenario' || type === 'forced') {
                 const optScore = parseInt(input.getAttribute('data-score'), 10);
                 baseScore = isNaN(optScore) ? 0 : optScore;
-                
+
                 // For scenarios, check if this might get a confidence multiplier
                 if (type === 'scenario') {
                     const cat = stepEl.getAttribute('data-cat');
@@ -462,22 +462,22 @@
                             const confInput = s.querySelector('input:checked');
                             if (confInput) {
                                 const confVal = parseInt(confInput.value, 10);
-                                const map = {1:0.25,2:0.5,3:0.75,4:1.0,5:1.25};
+                                const map = { 1: 0.25, 2: 0.5, 3: 0.75, 4: 1.0, 5: 1.25 };
                                 confidenceMultiplier = map[confVal] || 1.0;
                             }
                         }
                     });
-                    
+
                     // Count how many scenarios in this category have been answered so far
                     let scenariosSoFar = 0;
                     Array.from(allSteps).forEach(s => {
-                        if (s.getAttribute('data-cat') === cat && 
-                            s.getAttribute('data-type') === 'scenario' && 
+                        if (s.getAttribute('data-cat') === cat &&
+                            s.getAttribute('data-type') === 'scenario' &&
                             s.querySelector('input:checked')) {
                             scenariosSoFar++;
                         }
                     });
-                    
+
                     if (confidenceMultiplier !== null && scenariosSoFar === 1) {
                         // This is the first scenario in this category, so it gets the multiplier
                         const multipliedScore = baseScore * confidenceMultiplier;
@@ -503,31 +503,31 @@
                 const pairKey = stepEl.getAttribute('data-pair');
                 const cat = stepEl.getAttribute('data-cat');
                 const categoryName = CATS[cat] || cat || 'this category';
-                
+
                 // Find the paired item(s) and their current answers
                 const allSteps = container.querySelectorAll('.cdt-step');
                 const pairItems = [];
                 let pairedAnswers = [];
-                
+
                 Array.from(allSteps).forEach(s => {
                     if (s.getAttribute('data-pair') === pairKey && s !== stepEl) {
                         const pairText = s.querySelector('.cdt-quiz-question-text')?.textContent || 'Unknown question';
                         pairItems.push(pairText.substring(0, 60) + (pairText.length > 60 ? '...' : ''));
-                        
+
                         const pairInput = s.querySelector('input:checked');
                         if (pairInput) {
                             pairedAnswers.push(parseInt(pairInput.value, 10));
                         }
                     }
                 });
-                
+
                 // Determine penalty status and points awarded
                 let penaltyStatus = '';
                 let pointsAwarded = '0 pts';
                 const currentAnswer = rawVal;
                 const allAnswers = [...pairedAnswers, currentAnswer];
                 const highAnswers = allAnswers.filter(v => v >= 4);
-                
+
                 if (pairedAnswers.length === 0) {
                     penaltyStatus = ' - <em>waiting for paired item</em>';
                 } else if (pairedAnswers.length > 0) {
@@ -543,11 +543,11 @@
                         penaltyStatus = ' - <span style="color: #198754;">No penalty (at least one item < 4)</span>';
                     }
                 }
-                
+
                 const pairInfo = pairItems.length > 0 ? `<br><small>Paired with: "${pairItems.join('", "')}"</small>` : '';
                 label = `<strong>Awarded: ${pointsAwarded}</strong> (contradiction pair ${pairKey})${penaltyStatus}${pairInfo}`;
             } else if (type === 'confidence') {
-                const map = {1:0.25,2:0.5,3:0.75,4:1.0,5:1.25};
+                const map = { 1: 0.25, 2: 0.5, 3: 0.75, 4: 1.0, 5: 1.25 };
                 const multiplier = map[rawVal] || 1.0;
                 const cat = stepEl.getAttribute('data-cat');
                 const categoryName = CATS[cat] || cat || 'this category';
@@ -599,7 +599,7 @@
         steps.forEach((s, stepIndex) => s.querySelectorAll('input[type=radio]').forEach(inp => inp.addEventListener('change', () => {
             computeAdminAwardForStep(s);
             updateNavState();
-            
+
             // Auto-advance to next question after a short delay (matching MI quiz timing)
             setTimeout(() => {
                 if (stepIndex < totalSteps - 1) {
@@ -634,7 +634,7 @@
             const input = s.querySelector('input:checked');
             if (!input) return;
             const rawVal = parseInt(input.value, 10);
-            const map = {1:0.25,2:0.5,3:0.75,4:1.0,5:1.25};
+            const map = { 1: 0.25, 2: 0.5, 3: 0.75, 4: 1.0, 5: 1.25 };
             confidenceByCat[cat] = map[rawVal] || 1.0;
         });
 
@@ -698,7 +698,7 @@
             max += (virtueCount[cat] || 0) * 4; // virtue mapped 0..4
             max += (othersCount[cat] || 0) * 5;
             // Legacy items in this cat (if any) are not tracked; approximate by scanning DOM for legacy in this cat
-            const legacySteps = steps.filter(s => s.getAttribute('data-cat') === cat && !['scenario','forced','virtue','others','pair','confidence'].includes(s.getAttribute('data-type')));
+            const legacySteps = steps.filter(s => s.getAttribute('data-cat') === cat && !['scenario', 'forced', 'virtue', 'others', 'pair', 'confidence'].includes(s.getAttribute('data-type')));
             max += legacySteps.length * 5;
             maxByCat[cat] = max;
         });
@@ -737,7 +737,7 @@
             if (toolbar) toolbar.style.display = 'none';
             const containerEl = document.getElementById('cdt-quiz-container');
             if (containerEl) containerEl.style.display = 'block';
-        } catch(e) {}
+        } catch (e) { }
         if (devTools) devTools.style.display = 'none'; // Hide dev tools
         const { sortedScores, ageGroup } = quizState;
         const userFirstName = currentUser ? currentUser.firstName : 'Valued User';
@@ -764,7 +764,7 @@
             const score = scoreData ? scoreData[1] : 0;
             const localMax = (quizState.maxByCat && quizState.maxByCat[slug]) ? quizState.maxByCat[slug] : maxScore;
             const isHighScorer = score >= (localMax * 0.6); // Consider scores >= 60% as high
-            
+
             // For low scores, focus on the growth perspective
             if (type === 'low') {
                 return `
@@ -822,7 +822,7 @@
                 const ageGroupKey = quizState.ageGroup === 'graduate' ? 'graduate' : (quizState.ageGroup === 'teen' ? 'teen' : 'adult');
                 const ageGroupDetails = details[ageGroupKey] || details['adult'];
                 const watchOutText = isHighScorer ? ageGroupDetails.watchOutHigh : ageGroupDetails.watchOutLow;
-                
+
                 return `
                     <div class="cdt-dimension-card cdt-strength-focus">
                         <h3 class="cdt-dimension-card-title">Your Greatest Strength: ${details.title}</h3>
@@ -880,8 +880,7 @@
         const headerHtml = `
             <div class="results-main-header">
                 <div class="site-branding">
-                    <img src="${cdt_quiz_data.logoUrl || ''}" alt="Skill of Self-Discovery Logo" class="site-logo">
-                    <span class="site-title">Skill of Self-Discovery</span>
+                    <span class="site-title">What You're Good At</span>
                 </div>
             </div>
             <div class="cdt-results-header">
@@ -896,8 +895,8 @@
                 <h3 class="cdt-section-title">Your Profile Overview</h3>
                 <div class="cdt-overview-list">
                     ${sortedScores.map(([slug, score]) => {
-                        const details = ALL_DIMENSION_DETAILS[slug] || {};
-                        return `
+            const details = ALL_DIMENSION_DETAILS[slug] || {};
+            return `
                         <div class="cdt-overview-item">
                             <div class="cdt-overview-header">
                                 <span class="cdt-dimension-title">${details.title || CATS[slug]}</span>
@@ -934,7 +933,7 @@
         let predictionHtml = '';
         if (predictionData && predictionData.templates && predictionData.miResults && predictionData.cdtResults) {
             const { miResults, cdtResults, templates, miCategories, cdtCategories } = predictionData;
-            
+
             const bartleScores = { explorer: 0, achiever: 0, socializer: 0, strategist: 0 };
             const miMap = {
                 'logical-mathematical': ['achiever', 'strategist'], 'linguistic': ['socializer'],
@@ -991,7 +990,7 @@
                 const penalties = {};
                 const confidenceMultipliers = {};
                 const appliedScenarioMultipliers = {};
-                
+
                 // First pass: collect confidence multipliers
                 steps.forEach(s => {
                     const cat = s.getAttribute('data-cat');
@@ -1000,12 +999,12 @@
                         const input = s.querySelector('input:checked');
                         if (input) {
                             const rawVal = parseInt(input.value, 10);
-                            const map = {1:0.25,2:0.5,3:0.75,4:1.0,5:1.25};
+                            const map = { 1: 0.25, 2: 0.5, 3: 0.75, 4: 1.0, 5: 1.25 };
                             confidenceMultipliers[cat] = map[rawVal] || 1.0;
                         }
                     }
                 });
-                
+
                 // Second pass: process all questions
                 steps.forEach(s => {
                     const cat = s.getAttribute('data-cat');
@@ -1013,17 +1012,17 @@
                     const questionText = s.querySelector('.cdt-quiz-question-text')?.textContent || 'Unknown question';
                     const categoryName = CATS[cat] || cat || 'Unknown';
                     const input = s.querySelector('input:checked');
-                    
+
                     if (!input) return;
-                    
+
                     const rawVal = parseInt(input.value, 10);
                     let score = 0;
                     let reason = '';
-                    
+
                     if (type === 'scenario' || type === 'forced') {
                         const optScore = parseInt(input.getAttribute('data-score'), 10);
                         score = isNaN(optScore) ? 0 : optScore;
-                        
+
                         if (type === 'scenario' && !appliedScenarioMultipliers[cat]) {
                             const mult = confidenceMultipliers[cat] || 1.0;
                             score = score * mult;
@@ -1054,7 +1053,7 @@
                         score = isReverse ? (6 - rawVal) : rawVal;
                         reason = `likert${isReverse ? ' (reverse)' : ''}`;
                     }
-                    
+
                     scoreRows.push({
                         question: questionText.length > 80 ? questionText.substring(0, 80) + '...' : questionText,
                         category: categoryName,
@@ -1062,7 +1061,7 @@
                         reason: reason
                     });
                 });
-                
+
                 // Handle contradiction penalties
                 const pairAnswers = {};
                 steps.forEach(s => {
@@ -1078,7 +1077,7 @@
                         }
                     }
                 });
-                
+
                 Object.keys(pairAnswers).forEach(pairKey => {
                     const entry = pairAnswers[pairKey];
                     const vals = entry.vals || [];
@@ -1095,16 +1094,16 @@
                         }
                     }
                 });
-                
+
                 // Calculate totals by category
                 const categoryTotals = {};
                 scoreRows.forEach(row => {
                     if (!categoryTotals[row.category]) categoryTotals[row.category] = 0;
                     categoryTotals[row.category] += parseFloat(row.score);
                 });
-                
+
                 const grandTotal = Object.values(categoryTotals).reduce((sum, val) => sum + val, 0);
-                
+
                 let tableHtml = `
                     <div class="cdt-results-section cdt-admin-breakdown">
                         <h3 class="cdt-section-title">Admin: Detailed Scoring Breakdown</h3>
@@ -1118,7 +1117,7 @@
                                 </tr>
                             </thead>
                             <tbody>`;
-                
+
                 scoreRows.forEach(row => {
                     const scoreColor = parseFloat(row.score) < 0 ? 'color: #d63384;' : '';
                     tableHtml += `
@@ -1129,7 +1128,7 @@
                             <td style="font-size: 0.9em; color: #666;">${row.reason}</td>
                         </tr>`;
                 });
-                
+
                 // Add category subtotals
                 tableHtml += '<tr style="border-top: 2px solid #ddd; font-weight: bold;"><td colspan="4" style="padding-top: 15px; font-size: 1.1em;">Category Totals:</td></tr>';
                 Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).forEach(([cat, total]) => {
@@ -1140,7 +1139,7 @@
                             <td></td>
                         </tr>`;
                 });
-                
+
                 // Add grand total
                 tableHtml += `
                     <tr style="border-top: 3px solid #333; background-color: #e9ecef;">
@@ -1148,7 +1147,7 @@
                         <td style="text-align: center; font-weight: bold; font-size: 1.2em;">${grandTotal.toFixed(2)}</td>
                         <td></td>
                     </tr>`;
-                
+
                 tableHtml += `
                             </tbody>
                         </table>
@@ -1160,10 +1159,10 @@
                             .cdt-admin-breakdown { margin-top: 30px; }
                         </style>
                     </div>`;
-                
+
                 return tableHtml;
             };
-            
+
             adminBreakdownHtml = createAdminBreakdownTable();
         }
 
@@ -1228,7 +1227,7 @@
                         const a = document.createElement('a');
                         a.style.display = 'none';
                         a.href = url;
-                        a.download = `cdt-quiz-results-${new Date().toISOString().slice(0,10)}.pdf`;
+                        a.download = `cdt-quiz-results-${new Date().toISOString().slice(0, 10)}.pdf`;
                         document.body.appendChild(a);
                         a.click();
                         window.URL.revokeObjectURL(url);
@@ -1262,31 +1261,31 @@
                     method: 'POST',
                     body: new URLSearchParams({ action: 'cdt_delete_user_results', _ajax_nonce: ajaxNonce })
                 })
-                .then(r => {
-                    if (!r.ok) {
-                        // If it's a 403, it's almost certainly a nonce issue.
-                        if (r.status === 403) {
-                            alert('Your security session has expired. Please refresh the page and try again.');
-                        } else {
-                            alert(`An unexpected server error occurred (Status: ${r.status}). Please try again later.`);
+                    .then(r => {
+                        if (!r.ok) {
+                            // If it's a 403, it's almost certainly a nonce issue.
+                            if (r.status === 403) {
+                                alert('Your security session has expired. Please refresh the page and try again.');
+                            } else {
+                                alert(`An unexpected server error occurred (Status: ${r.status}). Please try again later.`);
+                            }
+                            throw new Error(`Network response was not ok, status: ${r.status}`);
                         }
-                        throw new Error(`Network response was not ok, status: ${r.status}`);
-                    }
-                    return r.json();
-                })
-                .then(j => {
-                    if (j.success) {
-                        currentUser.savedResults = null;
-                        quizState = { scores: {}, sortedScores: [], ageGroup: 'adult' };
-                        alert('Your results have been deleted.');
-                        renderAgeGate();
-                        window.scrollTo(0, 0);
-                    } else {
-                        alert('Error: ' + (j.data || 'Could not delete results.'));
-                        btn.innerHTML = '🗑️ Delete Results';
-                        btn.disabled = false;
-                    }
-                })
+                        return r.json();
+                    })
+                    .then(j => {
+                        if (j.success) {
+                            currentUser.savedResults = null;
+                            quizState = { scores: {}, sortedScores: [], ageGroup: 'adult' };
+                            alert('Your results have been deleted.');
+                            renderAgeGate();
+                            window.scrollTo(0, 0);
+                        } else {
+                            alert('Error: ' + (j.data || 'Could not delete results.'));
+                            btn.innerHTML = '🗑️ Delete Results';
+                            btn.disabled = false;
+                        }
+                    })
             });
             actionsContainer.appendChild(deleteBtn);
         }
@@ -1299,11 +1298,11 @@
         const emojiRegex = /[\u{2696}\u{1F9E9}\u{1F4D4}\u{1F504}\u{1F5D1}]\u{FE0F}?/gu;
         const pdfHtml = resultsHtml.replace(emojiRegex, '').trim();
 
-        const bodyParams = { 
-            action: 'cdt_save_user_results', 
-            _ajax_nonce: ajaxNonce, 
-            user_id: currentUser.id, 
-            results: JSON.stringify(quizState) 
+        const bodyParams = {
+            action: 'cdt_save_user_results',
+            _ajax_nonce: ajaxNonce,
+            user_id: currentUser.id,
+            results: JSON.stringify(quizState)
         };
 
         if (resultsHtml) {
@@ -1335,7 +1334,7 @@
                 var aboutBtn = document.getElementById('cdt-about-btn');
                 var aboutBtnTop = document.getElementById('cdt-about-top');
                 var aboutModal = document.getElementById('cdt-about-modal');
-                function toggleAbout(){
+                function toggleAbout() {
                     if (!aboutModal) return false;
                     var cont = document.getElementById('cdt-quiz-container');
                     var tool = document.getElementById('cdt-toolbar');
@@ -1347,7 +1346,7 @@
                         if (tool) { aboutModal.dataset.prevTool = tool.style.display || ''; tool.style.display = 'none'; }
                         if (stageEl) { aboutModal.dataset.prevStage = stageEl.style.display || ''; stageEl.style.display = 'none'; }
                         aboutModal.style.display = 'block';
-                        try { aboutModal.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e){}
+                        try { aboutModal.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { }
                     } else {
                         aboutModal.style.display = 'none';
                         if (cont && ('prevCont' in aboutModal.dataset)) cont.style.display = aboutModal.dataset.prevCont;
@@ -1356,20 +1355,20 @@
                     }
                     return false;
                 }
-                if (aboutBtn && !aboutBtn.getAttribute('data-cdt-about-bound')) { 
-                    aboutBtn.addEventListener('click', function(e){ e.preventDefault(); if (window.console) console.log('CDT About top-bar button click'); toggleAbout(); });
-                    aboutBtn.setAttribute('data-cdt-about-bound','1');
+                if (aboutBtn && !aboutBtn.getAttribute('data-cdt-about-bound')) {
+                    aboutBtn.addEventListener('click', function (e) { e.preventDefault(); if (window.console) console.log('CDT About top-bar button click'); toggleAbout(); });
+                    aboutBtn.setAttribute('data-cdt-about-bound', '1');
                 }
                 if (aboutBtnTop) {
                     aboutBtnTop.removeAttribute('onclick');
                     if (!aboutBtnTop.getAttribute('data-cdt-about-bound')) {
-                        aboutBtnTop.addEventListener('click', function(e){ e.preventDefault(); if (window.console) console.log('CDT About inline button click'); toggleAbout(); });
-                        aboutBtnTop.setAttribute('data-cdt-about-bound','1');
+                        aboutBtnTop.addEventListener('click', function (e) { e.preventDefault(); if (window.console) console.log('CDT About inline button click'); toggleAbout(); });
+                        aboutBtnTop.setAttribute('data-cdt-about-bound', '1');
                     }
                 }
-                window._cdtAboutToggle = function(e){ if (e && e.preventDefault) e.preventDefault(); return toggleAbout(); };
+                window._cdtAboutToggle = function (e) { if (e && e.preventDefault) e.preventDefault(); return toggleAbout(); };
                 // Start CTA inside About
-                document.addEventListener('click', function(ev){
+                document.addEventListener('click', function (ev) {
                     var t = ev.target;
                     if (t && t.id === 'cdt-about-start-btn') {
                         ev.preventDefault();
@@ -1379,7 +1378,7 @@
                     }
                 });
                 if (stageBtn && stage) {
-                    stageBtn.addEventListener('click', function(){
+                    stageBtn.addEventListener('click', function () {
                         if (toolbar) toolbar.style.display = 'block';
                         if (stage) stage.style.display = 'none';
                         startWithDetectedAge();
@@ -1396,36 +1395,36 @@
         }
     }
 
-    function startWithDetectedAge(){
+    function startWithDetectedAge() {
         try {
-                // Try to auto-detect age group from URL/localStorage/profile
-                try {
-                    const urlAge = getUrlAge();
-                    const localAge = localStorage.getItem('mc_age_group');
-                    const profileAge = ageGroup || null;
-                    const chosen = urlAge || localAge || profileAge;
-                    if (chosen) {
-                        quizState.ageGroup = ['teen','graduate','adult'].includes(chosen) ? chosen : 'adult';
-                        // Persist locally
-                        try { localStorage.setItem('mc_age_group', quizState.ageGroup); } catch(e) {}
-                        // If logged in and we have a chosen age not equal to profile, save to profile
-                        if (isLoggedIn && chosen && ageNonce) {
-                            fetch(ajaxUrl, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                                body: new URLSearchParams({ action: 'mc_save_age_group', _ajax_nonce: ageNonce, age_group: quizState.ageGroup })
-                            }).catch(()=>{});
-                        }
-                        document.getElementById('cdt-quiz-container').style.display = 'block';
-                        renderQuiz();
-                    } else {
-                        renderAgeGate();
+            // Try to auto-detect age group from URL/localStorage/profile
+            try {
+                const urlAge = getUrlAge();
+                const localAge = localStorage.getItem('mc_age_group');
+                const profileAge = ageGroup || null;
+                const chosen = urlAge || localAge || profileAge;
+                if (chosen) {
+                    quizState.ageGroup = ['teen', 'graduate', 'adult'].includes(chosen) ? chosen : 'adult';
+                    // Persist locally
+                    try { localStorage.setItem('mc_age_group', quizState.ageGroup); } catch (e) { }
+                    // If logged in and we have a chosen age not equal to profile, save to profile
+                    if (isLoggedIn && chosen && ageNonce) {
+                        fetch(ajaxUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: new URLSearchParams({ action: 'mc_save_age_group', _ajax_nonce: ageNonce, age_group: quizState.ageGroup })
+                        }).catch(() => { });
                     }
-                } catch(err) {
-                    console.warn('CDT: Age detection failed, showing gate', err);
+                    document.getElementById('cdt-quiz-container').style.display = 'block';
+                    renderQuiz();
+                } else {
                     renderAgeGate();
                 }
-        } catch(e) {}
+            } catch (err) {
+                console.warn('CDT: Age detection failed, showing gate', err);
+                renderAgeGate();
+            }
+        } catch (e) { }
     }
 
     init();

@@ -2,7 +2,7 @@
 /*
 Plugin Name: Micro-Coach Quiz Platform
 Description: A modular platform for hosting various quizzes with AI-powered insights and advanced caching.
-Version: 1.2.0
+Version: 1.2.1
 Author: Your Name
 License: GPL2
 Requires at least: 5.0
@@ -11,7 +11,8 @@ Requires PHP: 7.4
 Network: false
 */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if (!defined('ABSPATH'))
+    exit;
 
 /**
  * This is the main plugin file. It is responsible for loading all
@@ -20,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 // Define constants
 define('MC_QUIZ_PLATFORM_PATH', plugin_dir_path(__FILE__));
-define('MC_QUIZ_PLATFORM_VERSION', '1.2.0');
+define('MC_QUIZ_PLATFORM_VERSION', '1.3.2');
 define('MC_QUIZ_PLATFORM_DB_VERSION', '1.1');
 
 // Include the Composer autoloader for PHP libraries like Dompdf.
@@ -47,6 +48,27 @@ if (!class_exists('MC_Funnel')) {
 if (!class_exists('MC_User_Profile')) {
     require_once MC_QUIZ_PLATFORM_PATH . 'includes/class-mc-user-profile.php';
 }
+if (!class_exists('MC_Landing_Pages')) {
+    require_once MC_QUIZ_PLATFORM_PATH . 'includes/class-mc-landing-pages.php';
+}
+if (!class_exists('MC_Employer_Onboarding')) {
+    require_once MC_QUIZ_PLATFORM_PATH . 'includes/class-mc-employer-onboarding.php';
+}
+if (!class_exists('MC_Quiz_Dashboard')) {
+    require_once MC_QUIZ_PLATFORM_PATH . 'includes/class-mc-quiz-dashboard.php';
+}
+if (!class_exists('MC_Employer_Dashboard')) {
+    require_once MC_QUIZ_PLATFORM_PATH . 'includes/class-mc-employer-dashboard.php';
+}
+if (!class_exists('MC_Login_Customizer')) {
+    require_once MC_QUIZ_PLATFORM_PATH . 'includes/class-mc-login-customizer.php';
+}
+if (!class_exists('MC_Roles')) {
+    require_once MC_QUIZ_PLATFORM_PATH . 'includes/class-mc-roles.php';
+}
+if (!class_exists('MC_Super_Admin')) {
+    require_once MC_QUIZ_PLATFORM_PATH . 'includes/class-mc-super-admin.php';
+}
 
 // Include all the necessary class files.
 // These files should ONLY define classes, not run any code themselves.
@@ -67,15 +89,16 @@ if (is_admin()) {
  * The main function to initialize the entire quiz platform.
  * This ensures all classes are loaded before we try to use them.
  */
-function mc_quiz_platform_init() {
+function mc_quiz_platform_init()
+{
     // Run database migrations if needed
     if (is_admin()) {
         MC_DB_Migration::maybe_migrate();
     }
-    
+
     // Initialize user profile management
     MC_User_Profile::init();
-    
+
     // Instantiate the core platform and AI services.
     new Micro_Coach_Core();
     new Micro_Coach_AI();
@@ -86,13 +109,34 @@ function mc_quiz_platform_init() {
     new CDT_Quiz_Plugin();
     new Bartle_Quiz_Plugin();
     new Johari_MI_Quiz_Module();
+
+    // Initialize landing pages
+    MC_Landing_Pages::init();
+
+    // Initialize onboarding
+    MC_Employer_Onboarding::init();
+    MC_Quiz_Dashboard::init();
+    MC_Employer_Dashboard::init();
+    MC_Login_Customizer::init();
+    MC_Roles::init();
+
+    // Initialize Super Admin Dashboard
+    if (is_admin() && current_user_can('manage_options')) {
+        new MC_Super_Admin();
+    }
+
+    // Ensure user registration is enabled for the platform to work
+    if (!get_option('users_can_register')) {
+        update_option('users_can_register', 1);
+    }
 }
 add_action('plugins_loaded', 'mc_quiz_platform_init');
 
 /**
  * Activation hook for the entire platform.
  */
-function mc_quiz_platform_activate() {
+function mc_quiz_platform_activate()
+{
     // Run activation tasks for each module if they exist.
     if (method_exists('MI_Quiz_Plugin_AI', 'activate')) {
         MI_Quiz_Plugin_AI::activate();
@@ -106,6 +150,86 @@ function mc_quiz_platform_activate() {
     if (method_exists('Johari_MI_Quiz_Module', 'activate')) {
         Johari_MI_Quiz_Module::activate();
     }
+
+    // Define pages to create
+    $pages_to_create = [
+        'employer-landing' => [
+            'title' => 'Employer Assessment Platform',
+            'content' => '[mc_employer_landing]',
+            'shortcode' => 'mc_employer_landing'
+        ],
+        'employee-landing' => [
+            'title' => 'Employee Assessment Portal',
+            'content' => '[mc_employee_landing]',
+            'shortcode' => 'mc_employee_landing'
+        ],
+        'employer-onboarding' => [
+            'title' => 'Employer Onboarding',
+            'content' => '[mc_employer_onboarding]',
+            'shortcode' => 'mc_employer_onboarding'
+        ],
+        'employer-dashboard' => [
+            'title' => 'Employer Dashboard',
+            'content' => '[mc_employer_dashboard]',
+            'shortcode' => 'mc_employer_dashboard'
+        ],
+        'quiz-dashboard' => [
+            'title' => 'My Assessment Dashboard',
+            'content' => '[quiz_dashboard]',
+            'shortcode' => 'quiz_dashboard'
+        ],
+        'mi-quiz' => [
+            'title' => 'Multiple Intelligences Assessment',
+            'content' => '[mi_quiz]',
+            'shortcode' => 'mi_quiz'
+        ],
+        'cdt-quiz' => [
+            'title' => 'Cognitive Dissonance Tolerance Quiz',
+            'content' => '[cdt_quiz]',
+            'shortcode' => 'cdt_quiz'
+        ],
+        'bartle-quiz' => [
+            'title' => 'Player Type Discovery',
+            'content' => '[bartle_quiz]',
+            'shortcode' => 'bartle_quiz'
+        ],
+        'johari-mi-quiz' => [
+            'title' => 'Johari x MI',
+            'content' => '[johari_mi_quiz]',
+            'shortcode' => 'johari_mi_quiz'
+        ]
+    ];
+
+    foreach ($pages_to_create as $slug => $data) {
+        $existing = get_page_by_path($slug);
+        if (!$existing) {
+            // Check if page exists by title to avoid duplicates if slug changed
+            $page_check = get_page_by_title($data['title']);
+            if (!$page_check) {
+                wp_insert_post([
+                    'post_title' => $data['title'],
+                    'post_name' => $slug,
+                    'post_content' => $data['content'],
+                    'post_status' => 'publish',
+                    'post_type' => 'page',
+                    'meta_input' => [
+                        '_wp_page_template' => 'elementor_canvas'
+                    ]
+                ]);
+            }
+        }
+    }
+
+    update_option('mc_pages_created_v2', true);
+
+    // Run role migration once
+    if (!get_option('mc_roles_migrated_v1')) {
+        if (class_exists('MC_Roles')) {
+            MC_Roles::register_roles(); // Register immediately for use
+            MC_Roles::migrate_users();
+            update_option('mc_roles_migrated_v1', true);
+        }
+    }
 }
 register_activation_hook(__FILE__, 'mc_quiz_platform_activate');
 
@@ -118,15 +242,20 @@ register_activation_hook(__FILE__, 'mc_quiz_platform_activate');
  * @param \Elementor\Widget_Base $widget The widget instance.
  * @return string The processed content.
  */
-function mc_force_render_quiz_shortcodes_in_elementor($widget_content, $widget) {
+function mc_force_render_quiz_shortcodes_in_elementor($widget_content, $widget)
+{
     if (is_object($widget) && method_exists($widget, 'get_name') && 'shortcode' === $widget->get_name()) {
         $content = (string) $widget_content;
         $shortcodes = [
             'quiz_dashboard',
-            'mi_quiz', 'mi-quiz',
-            'cdt_quiz', 'cdt-quiz',
-            'bartle_quiz', 'bartle-quiz',
-            'johari_mi_quiz', 'johari-mi-quiz',
+            'mi_quiz',
+            'mi-quiz',
+            'cdt_quiz',
+            'cdt-quiz',
+            'bartle_quiz',
+            'bartle-quiz',
+            'johari_mi_quiz',
+            'johari-mi-quiz',
         ];
         foreach ($shortcodes as $sc) {
             if (has_shortcode($content, $sc)) {
@@ -137,4 +266,18 @@ function mc_force_render_quiz_shortcodes_in_elementor($widget_content, $widget) 
     return $widget_content;
 }
 add_filter('elementor/widget/render_content', 'mc_force_render_quiz_shortcodes_in_elementor', 11, 2);
+
+/**
+ * Enqueue styles for landing pages and dashboard.
+ */
+function mc_enqueue_landing_page_styles()
+{
+    wp_enqueue_style('mc-landing-pages', plugins_url('assets/landing-pages.css', __FILE__), [], '1.0.2');
+
+    // Enqueue employer dashboard styles on dashboard page
+    if (is_page() && has_shortcode(get_post()->post_content, 'mc_employer_dashboard')) {
+        wp_enqueue_style('mc-employer-dashboard', plugins_url('assets/employer-dashboard.css', __FILE__), [], MC_QUIZ_PLATFORM_VERSION);
+    }
+}
+add_action('wp_enqueue_scripts', 'mc_enqueue_landing_page_styles');
 

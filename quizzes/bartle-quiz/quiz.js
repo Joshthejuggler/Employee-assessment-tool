@@ -1,4 +1,4 @@
-(function() {
+(function () {
     // --- Setup ---
     const { currentUser, ajaxUrl, ajaxNonce, miqNonce, loginUrl, data, dashboardUrl, progress } = bartle_quiz_data;
     const { cats: CATS, questions: QUESTIONS, likert: LIKERT } = data;
@@ -59,36 +59,36 @@
             statusEl.style.color = 'inherit';
             regBtn.disabled = true;
 
-            const body = new URLSearchParams({ 
+            const body = new URLSearchParams({
                 action: 'miq_magic_register',
-                _ajax_nonce: miqNonce, 
-                email: email, 
-                first_name: firstName, 
+                _ajax_nonce: miqNonce,
+                email: email,
+                first_name: firstName,
                 results_html: '',
                 results_data: JSON.stringify(quizState)
             });
 
             fetch(ajaxUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })
-            .then(r => r.json())
-            .then(j => {
-                if (j.success) {
-                    statusEl.innerHTML = j.data;
-                    statusEl.style.color = 'green';
-                    setTimeout(() => window.location.reload(), 1500);
-                } else {
-                    let errorMsg = 'An unknown error occurred. Please try again.';
-                    if (j.data) {
-                        errorMsg = typeof j.data === 'string' ? j.data : (j.data.message || JSON.stringify(j.data));
+                .then(r => r.json())
+                .then(j => {
+                    if (j.success) {
+                        statusEl.innerHTML = j.data;
+                        statusEl.style.color = 'green';
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        let errorMsg = 'An unknown error occurred. Please try again.';
+                        if (j.data) {
+                            errorMsg = typeof j.data === 'string' ? j.data : (j.data.message || JSON.stringify(j.data));
+                        }
+                        statusEl.innerHTML = 'Error: ' + errorMsg;
+                        statusEl.style.color = 'red';
+                        regBtn.disabled = false;
                     }
-                    statusEl.innerHTML = 'Error: ' + errorMsg;
+                }).catch(() => {
+                    statusEl.innerHTML = 'An unexpected error occurred. Please try again.';
                     statusEl.style.color = 'red';
                     regBtn.disabled = false;
-                }
-            }).catch(() => {
-                statusEl.innerHTML = 'An unexpected error occurred. Please try again.';
-                statusEl.style.color = 'red';
-                regBtn.disabled = false;
-            });
+                });
         });
     }
 
@@ -215,7 +215,7 @@
             steps.forEach((s, j) => s.style.display = j === k ? 'block' : 'none');
             prevBtn.disabled = (k === 0);
             bar.style.width = ((k + 1) / totalSteps * 100) + '%';
-            
+
             const allAnswered = Array.from(steps).every(s => s.querySelector('input:checked'));
             if (allAnswered) {
                 calculateAndShowResults();
@@ -224,13 +224,13 @@
 
         prevBtn.addEventListener('click', () => { if (currentStep > 0) { currentStep--; showStep(currentStep); } });
         steps.forEach((s, k) => s.querySelectorAll('input[type=radio]').forEach(inp => inp.addEventListener('change', () => {
-            setTimeout(() => { 
-                if (k < totalSteps - 1) { 
-                    currentStep = k + 1; 
-                    showStep(currentStep); 
-                } else { 
+            setTimeout(() => {
+                if (k < totalSteps - 1) {
+                    currentStep = k + 1;
+                    showStep(currentStep);
+                } else {
                     showStep(k); // Stay on last step to check if all are answered
-                } 
+                }
             }, 150);
         })));
 
@@ -240,12 +240,12 @@
     function calculateAndShowResults() {
         const scores = {};
         Object.keys(CATS).forEach(k => scores[k] = 0);
-        
+
         container.querySelectorAll('.bartle-step').forEach(s => {
             const cat = s.getAttribute('data-cat');
             const isReverse = s.getAttribute('data-reverse') === 'true';
             const val = s.querySelector('input:checked')?.value;
-            
+
             if (cat && val) {
                 let score = parseInt(val, 10);
                 if (isReverse) {
@@ -276,7 +276,7 @@
             if (toolbar) toolbar.style.display = 'none';
             const containerEl = document.getElementById('bartle-quiz-container');
             if (containerEl) containerEl.style.display = 'block';
-        } catch(e) {}
+        } catch (e) { }
         if (devTools) devTools.style.display = 'none'; // Hide dev tools
         const { sortedScores, ageGroup } = quizState;
         const maxScore = (QUESTIONS[ageGroup]?.[sortedScores[0]?.[0]]?.length || 10) * 5;
@@ -291,8 +291,7 @@
         const headerHtml = `
             <div class="results-main-header">
                 <div class="site-branding">
-                    <img src="${bartle_quiz_data.logoUrl || ''}" alt="Skill of Self-Discovery Logo" class="site-logo">
-                    <span class="site-title">Skill of Self-Discovery</span>
+                    <span class="site-title">What You're Good At</span>
                 </div>
             </div>
             <div class="bartle-results-header">
@@ -397,7 +396,7 @@
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = url;
-                    a.download = `bartle-quiz-results-${new Date().toISOString().slice(0,10)}.pdf`;
+                    a.download = `bartle-quiz-results-${new Date().toISOString().slice(0, 10)}.pdf`;
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
@@ -441,25 +440,25 @@
                     method: 'POST',
                     body: new URLSearchParams({ action: 'bartle_delete_user_results', _ajax_nonce: ajaxNonce })
                 })
-                .then(r => r.json())
-                .then(j => {
-                    if (j.success) {
-                        currentUser.savedResults = null;
-                        quizState = {
-                            scores: {},
-                            sortedScores: [],
-                            ageGroup: bartle_quiz_data.userAgeGroup || 'adult',
-                            needsAgeGroup: false
-                        };
-                        alert('Your results have been deleted.');
-                        renderIntro();
-                        window.scrollTo(0, 0);
-                    } else {
-                        alert('Error: ' + (j.data || 'Could not delete results.'));
-                        btn.innerHTML = '🗑️ Delete Results';
-                        btn.disabled = false;
-                    }
-                });
+                    .then(r => r.json())
+                    .then(j => {
+                        if (j.success) {
+                            currentUser.savedResults = null;
+                            quizState = {
+                                scores: {},
+                                sortedScores: [],
+                                ageGroup: bartle_quiz_data.userAgeGroup || 'adult',
+                                needsAgeGroup: false
+                            };
+                            alert('Your results have been deleted.');
+                            renderIntro();
+                            window.scrollTo(0, 0);
+                        } else {
+                            alert('Error: ' + (j.data || 'Could not delete results.'));
+                            btn.innerHTML = '🗑️ Delete Results';
+                            btn.disabled = false;
+                        }
+                    });
             });
             actionsContainer.appendChild(deleteBtn);
         }
@@ -471,11 +470,11 @@
         fetch(ajaxUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ 
-                action: 'bartle_save_user_results', 
-                _ajax_nonce: ajaxNonce, 
-                user_id: currentUser.id, 
-                results: JSON.stringify(quizState) 
+            body: new URLSearchParams({
+                action: 'bartle_save_user_results',
+                _ajax_nonce: ajaxNonce,
+                user_id: currentUser.id,
+                results: JSON.stringify(quizState)
             })
         });
     }
