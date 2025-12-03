@@ -47,7 +47,7 @@
     right: 0;
     bottom: 0;
     background: radial-gradient(circle at 30% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 70% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+        radial-gradient(circle at 70% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
     pointer-events: none;
 }
 
@@ -988,6 +988,7 @@ h1.entry-title {
         opacity: 0;
         transform: translateY(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1163,11 +1164,11 @@ h1.entry-title {
         grid-template-columns: 1fr;
         gap: 40px;
     }
-    
+
     .mc-action-visual {
         order: -1;
     }
-    
+
     .mc-action-text {
         padding-right: 0;
     }
@@ -1177,100 +1178,100 @@ h1.entry-title {
     .mc-landing-hero {
         padding: 60px 20px 80px;
     }
-    
+
     .mc-action-section {
         padding: 60px 20px;
     }
-    
+
     /* Onboarding Mobile */
     .mc-onboarding-step {
         padding: 32px 24px;
     }
-    
+
     .mc-benefits-grid {
         grid-template-columns: 1fr;
         gap: 16px;
     }
-    
+
     .mc-invite-row {
         grid-template-columns: 1fr;
     }
-    
+
     .mc-form-actions {
         flex-direction: column-reverse;
     }
-    
+
     .mc-form-actions .mc-button {
         width: 100%;
     }
-    
+
     .mc-success-step {
         padding: 40px 24px;
     }
-    
+
     .mc-success-step h2 {
         font-size: 2rem;
     }
-    
+
     .mc-landing-hero h1 {
         font-size: 2.5rem;
     }
-    
+
     .mc-landing-subtitle {
         font-size: 1.1rem;
     }
-    
+
     .mc-hero-cta {
         flex-direction: column;
     }
-    
+
     .mc-button {
         width: 100%;
         max-width: 300px;
     }
-    
+
     .mc-stats-grid {
         grid-template-columns: 1fr;
         gap: 32px;
     }
-    
+
     .mc-value-boxes {
         grid-template-columns: 1fr;
         gap: 24px;
     }
-    
+
     .mc-assessments-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .mc-landing-section {
         padding: 60px 20px;
     }
-    
+
     .mc-landing-section h2,
     .mc-section-header h2 {
         font-size: 2rem;
     }
-    
+
     .mc-cta-box {
         padding: 40px 24px;
     }
-    
+
     .mc-cta-buttons {
         flex-direction: column;
     }
-    
+
     .mc-list-grid {
         grid-template-columns: 1fr;
     }
-    
+
     /* Sample Report Modal Mobile Styles */
     .mc-sample-modal-content {
         width: 95%;
         margin: 20px auto;
         max-height: 95vh;
     }
-    
+
     .mc-sample-report-header,
     .mc-sample-summary,
     .mc-sample-section,
@@ -1278,12 +1279,12 @@ h1.entry-title {
         padding-left: 20px;
         padding-right: 20px;
     }
-    
+
     .mc-sample-report-header h2 {
         font-size: 1.4rem;
         padding-right: 40px;
     }
-    
+
     .mc-sample-close {
         top: 12px;
         right: 12px;
@@ -1537,23 +1538,46 @@ h1.entry-title {
     .mc-employee-hero h1 {
         font-size: 2.5rem;
     }
-    
+
     .mc-employee-hero .mc-hero-subtitle {
         font-size: 1.1rem;
     }
-    
+
     .mc-employee-hero .mc-hero-stats {
         flex-direction: column;
         gap: 16px;
         align-items: center;
     }
-    
+
     .mc-benefits-grid {
         grid-template-columns: 1fr;
         gap: 24px;
     }
-    
+
     .mc-benefit-card {
         padding: 32px 24px;
     }
+}
+
+/* Invite Groups */
+.mc-invite-group {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.mc-invite-group-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 12px 0;
+}
+
+.mc-invite-group .mc-invite-row {
+    margin-bottom: 0;
 }

@@ -19,11 +19,31 @@ class MC_Login_Customizer
 
         // Custom login redirect logic
         add_filter('login_redirect', [__CLASS__, 'custom_login_redirect'], 10, 3);
-        
+
         // Auto-login registration hooks
         add_action('register_form', [__CLASS__, 'add_password_fields']);
         add_filter('registration_errors', [__CLASS__, 'validate_password_fields'], 10, 3);
         add_action('user_register', [__CLASS__, 'save_password_and_login']);
+
+        // Track user login
+        add_action('wp_login', [__CLASS__, 'track_user_login'], 10, 2);
+    }
+
+    /**
+     * Track user login and update status.
+     */
+    public static function track_user_login($user_login, $user)
+    {
+        // Update last login timestamp
+        update_user_meta($user->ID, 'mc_last_login', current_time('mysql'));
+
+        // If user is an employer and status is pending, set to active
+        if (in_array(MC_Roles::ROLE_EMPLOYER, (array) $user->roles)) {
+            $status = get_user_meta($user->ID, 'mc_employer_status', true);
+            if (!$status || $status === 'pending') {
+                update_user_meta($user->ID, 'mc_employer_status', 'active');
+            }
+        }
     }
 
     /**
@@ -146,14 +166,16 @@ class MC_Login_Customizer
 
             // Determine redirect based on role
             $redirect_to = home_url();
-            
+
             // Check role we just assigned
             if ($user->has_cap(MC_Roles::CAP_MANAGE_EMPLOYEES)) {
                 $dash = MC_Funnel::find_page_by_shortcode('mc_employer_dashboard');
-                if ($dash) $redirect_to = $dash;
+                if ($dash)
+                    $redirect_to = $dash;
             } elseif ($user->has_cap(MC_Roles::CAP_TAKE_ASSESSMENTS)) {
                 $dash = MC_Funnel::find_page_by_shortcode('quiz_dashboard');
-                if ($dash) $redirect_to = $dash;
+                if ($dash)
+                    $redirect_to = $dash;
             }
 
             // If invite code cookie exists, logic might override (but we handled role assignment above)

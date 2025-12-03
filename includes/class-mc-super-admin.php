@@ -12,7 +12,7 @@ class MC_Super_Admin
         if (is_admin()) {
             add_action('admin_menu', [$this, 'add_admin_menu'], 8);
             add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
-            
+
             // AJAX handlers
             add_action('wp_ajax_mc_create_employer', [$this, 'ajax_create_employer']);
             add_action('wp_ajax_mc_update_employer_status', [$this, 'ajax_update_employer_status']);
@@ -72,7 +72,7 @@ class MC_Super_Admin
             'mc-super-admin-css',
             plugin_dir_url(__DIR__) . 'assets/super-admin.css',
             [],
-            '1.0.0'
+            '1.0.14'
         );
 
         wp_enqueue_script(
@@ -195,7 +195,12 @@ class MC_Super_Admin
                                 <th>Company</th>
                                 <th>Contact</th>
                                 <th>Email</th>
-                                <th>Employees</th>
+                                <th>
+                                    Employees
+                                    <span class="mc-tooltip-icon" data-tooltip="Active (Logged in) / Invited (Total)">
+                                        <span class="dashicons dashicons-info"></span>
+                                    </span>
+                                </th>
                                 <th>Status</th>
                                 <th>Subscription</th>
                                 <th>Registered</th>
@@ -213,18 +218,25 @@ class MC_Super_Admin
                                     </td>
                                 </tr>
                             <?php else: ?>
-                                <?php foreach ($employers as $employer): 
+                                <?php foreach ($employers as $employer):
                                     $company_name = get_user_meta($employer->ID, 'mc_company_name', true);
                                     $status = get_user_meta($employer->ID, 'mc_employer_status', true) ?: 'pending';
                                     $subscription = get_user_meta($employer->ID, 'mc_subscription_plan', true) ?: 'free';
-                                    
+
                                     $employees = get_users([
                                         'meta_key' => 'mc_linked_employer_id',
                                         'meta_value' => $employer->ID,
-                                        'fields' => 'ID'
+                                        'fields' => 'all'
                                     ]);
-                                    $employee_count = count($employees);
-                                ?>
+                                    $total_employees = count($employees);
+                                    $active_employees = 0;
+
+                                    foreach ($employees as $employee) {
+                                        if (get_user_meta($employee->ID, 'mc_last_login', true)) {
+                                            $active_employees++;
+                                        }
+                                    }
+                                    ?>
                                     <tr data-employer-id="<?php echo esc_attr($employer->ID); ?>">
                                         <td>
                                             <strong><?php echo esc_html($company_name ?: 'N/A'); ?></strong>
@@ -236,7 +248,16 @@ class MC_Super_Admin
                                             </a>
                                         </td>
                                         <td>
-                                            <span class="mc-badge mc-badge-count"><?php echo esc_html($employee_count); ?></span>
+                                            <div class="mc-employee-count-wrapper">
+                                                <span class="mc-badge mc-badge-count">
+                                                    <?php echo esc_html($active_employees . ' / ' . $total_employees); ?>
+                                                </span>
+                                                <?php if ($total_employees > 0): ?>
+                                                    <button type="button" class="mc-accordion-toggle" title="View Employees">
+                                                        <span class="dashicons dashicons-arrow-down-alt2"></span>
+                                                    </button>
+                                                <?php endif; ?>
+                                            </div>
                                         </td>
                                         <td>
                                             <?php
@@ -270,27 +291,76 @@ class MC_Super_Admin
                                         </td>
                                         <td>
                                             <div class="mc-row-actions">
-                                                <button type="button" class="mc-action-btn mc-btn-view" 
-                                                        data-employer-id="<?php echo esc_attr($employer->ID); ?>"
-                                                        title="View Details">
+                                                <?php if (function_exists('user_switching_get_switch_url')): ?>
+                                                    <a href="<?php echo esc_url(user_switching_get_switch_url($employer)); ?>"
+                                                        class="mc-action-btn mc-btn-switch" title="Run As User">
+                                                        <span class="dashicons dashicons-migrate"></span>
+                                                    </a>
+                                                <?php endif; ?>
+                                                <button type="button" class="mc-action-btn mc-btn-view"
+                                                    data-employer-id="<?php echo esc_attr($employer->ID); ?>" title="View Details">
                                                     <span class="dashicons dashicons-visibility"></span>
                                                 </button>
-                                                <button type="button" class="mc-action-btn mc-btn-send-invite" 
-                                                        data-employer-id="<?php echo esc_attr($employer->ID); ?>"
-                                                        data-employer-email="<?php echo esc_attr($employer->user_email); ?>"
-                                                        title="Send Invite">
+                                                <button type="button" class="mc-action-btn mc-btn-send-invite"
+                                                    data-employer-id="<?php echo esc_attr($employer->ID); ?>"
+                                                    data-employer-email="<?php echo esc_attr($employer->user_email); ?>"
+                                                    title="Send Invite">
                                                     <span class="dashicons dashicons-email"></span>
                                                 </button>
-                                                <button type="button" class="mc-action-btn mc-btn-edit" 
-                                                        data-employer-id="<?php echo esc_attr($employer->ID); ?>"
-                                                        title="Edit">
+                                                <button type="button" class="mc-action-btn mc-btn-edit"
+                                                    data-employer-id="<?php echo esc_attr($employer->ID); ?>" title="Edit">
                                                     <span class="dashicons dashicons-edit"></span>
                                                 </button>
-                                                <button type="button" class="mc-action-btn mc-btn-delete" 
-                                                        data-employer-id="<?php echo esc_attr($employer->ID); ?>"
-                                                        title="Delete">
+                                                <?php
+                                                $switch_url = add_query_arg(array(
+                                                    'action' => 'switch_to_user',
+                                                    'user_id' => $employer->ID,
+                                                    '_wpnonce' => wp_create_nonce('switch_to_user_' . $employer->ID)
+                                                ), admin_url('users.php'));
+                                                ?>
+                                                <a href="<?php echo esc_url($switch_url); ?>" class="mc-action-btn mc-btn-switch"
+                                                    title="Run As User">
+                                                    <span class="dashicons dashicons-migrate"></span>
+                                                </a>
+                                                <button type="button" class="mc-action-btn mc-btn-delete"
+                                                    data-employer-id="<?php echo esc_attr($employer->ID); ?>" title="Delete">
                                                     <span class="dashicons dashicons-trash"></span>
                                                 </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <!-- Employee Details Row -->
+                                    <tr class="mc-details-row" style="display: none;">
+                                        <td colspan="8">
+                                            <div class="mc-details-content">
+                                                <h4>Employees</h4>
+                                                <?php if (empty($employees)): ?>
+                                                    <p>No employees found.</p>
+                                                <?php else: ?>
+                                                    <div class="mc-nested-grid">
+                                                        <div class="mc-grid-head">Name</div>
+                                                        <div class="mc-grid-head">Email</div>
+                                                        <div class="mc-grid-head">Status</div>
+                                                        <div class="mc-grid-head">Last Login</div>
+
+                                                        <?php foreach ($employees as $employee):
+                                                            $last_login = get_user_meta($employee->ID, 'mc_last_login', true);
+                                                            $emp_status = $last_login ? 'Active' : 'Invited';
+                                                            $emp_status_class = $last_login ? 'mc-badge-success' : 'mc-badge-warning';
+                                                            ?>
+                                                            <div class="mc-grid-cell"><?php echo esc_html($employee->display_name); ?></div>
+                                                            <div class="mc-grid-cell"><?php echo esc_html($employee->user_email); ?></div>
+                                                            <div class="mc-grid-cell">
+                                                                <span class="mc-badge <?php echo esc_attr($emp_status_class); ?>">
+                                                                    <?php echo esc_html($emp_status); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div class="mc-grid-cell">
+                                                                <?php echo $last_login ? esc_html(date('M j, Y', strtotime($last_login))) : 'Never'; ?>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                <?php endif; ?>
                                             </div>
                                         </td>
                                     </tr>
@@ -620,7 +690,7 @@ class MC_Super_Admin
     {
         $user = get_userdata($user_id);
         $company_name = get_user_meta($user_id, 'mc_company_name', true);
-        
+
         $onboarding_url = home_url('/employer-onboarding/');
         if (class_exists('MC_Funnel')) {
             $page = MC_Funnel::find_page_by_shortcode('employer_onboarding');
@@ -631,7 +701,7 @@ class MC_Super_Admin
 
         $subject = 'Welcome to What You\'re Good At - Employee Assessment Platform';
         $first_name = $user->first_name ?: 'there';
-        
+
         // Build HTML email
         $message = '
         <!DOCTYPE html>
@@ -675,7 +745,7 @@ class MC_Super_Admin
                                     
                                     <p class="email-text-secondary" style="margin: 0 0 24px; font-size: 16px; color: #475569; line-height: 1.6;">Your employer account has been created. You\'re now ready to unlock the full potential of your team through comprehensive psychometric assessments.</p>
                                     ';
-        
+
         if ($password) {
             $message .= '
                                     <div class="email-box" style="background-color: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; padding: 24px; margin: 24px 0;">
@@ -686,7 +756,7 @@ class MC_Super_Admin
                                     </div>
                                     ';
         }
-        
+
         $message .= '
                                     <div style="margin: 32px 0;">
                                         <h2 class="email-text" style="margin: 0 0 16px; font-size: 20px; font-weight: 700; color: #0f172a;">🚀 Get Started</h2>
@@ -732,11 +802,15 @@ class MC_Super_Admin
         ';
 
         // Set content type to HTML
-        add_filter('wp_mail_content_type', function() { return 'text/html'; });
-        
+        add_filter('wp_mail_content_type', function () {
+            return 'text/html';
+        });
+
         wp_mail($email, $subject, $message);
-        
+
         // Reset content type
-        remove_filter('wp_mail_content_type', function() { return 'text/html'; });
+        remove_filter('wp_mail_content_type', function () {
+            return 'text/html';
+        });
     }
 }

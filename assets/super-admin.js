@@ -1,4 +1,4 @@
-jQuery(document).ready(function($) {
+jQuery(document).ready(function ($) {
     'use strict';
 
     // Modal handling
@@ -13,33 +13,33 @@ jQuery(document).ready(function($) {
     }
 
     // Open create employer modal
-    $('.mc-btn-create-employer').on('click', function() {
+    $('.mc-btn-create-employer').on('click', function () {
         $('#mc-create-employer-form')[0].reset();
         openModal('#mc-create-employer-modal');
     });
 
     // Close modal on overlay click or close button
-    $('.mc-modal-overlay, .mc-modal-close').on('click', function() {
+    $('.mc-modal-overlay, .mc-modal-close').on('click', function () {
         closeModal('#mc-create-employer-modal');
     });
 
     // Prevent modal close when clicking inside modal content
-    $('.mc-modal-content').on('click', function(e) {
+    $('.mc-modal-content').on('click', function (e) {
         e.stopPropagation();
     });
 
     // Close modal on Escape key
-    $(document).on('keydown', function(e) {
+    $(document).on('keydown', function (e) {
         if (e.key === 'Escape') {
             closeModal('#mc-create-employer-modal');
         }
     });
 
     // Create employer
-    $('#mc-submit-employer').on('click', function() {
+    $('#mc-submit-employer').on('click', function () {
         const $btn = $(this);
         const $form = $('#mc-create-employer-form');
-        
+
         // Basic validation
         const email = $form.find('#employer_email').val().trim();
         if (!email) {
@@ -64,7 +64,7 @@ jQuery(document).ready(function($) {
             url: mcSuperAdmin.ajaxUrl,
             type: 'POST',
             data: formData,
-            success: function(response) {
+            success: function (response) {
                 if (response.success) {
                     closeModal('#mc-create-employer-modal');
                     // Reload page to show new employer
@@ -74,7 +74,7 @@ jQuery(document).ready(function($) {
                     $btn.prop('disabled', false).html('Create Employer');
                 }
             },
-            error: function() {
+            error: function () {
                 alert('Network error. Please try again.');
                 $btn.prop('disabled', false).html('Create Employer');
             }
@@ -82,7 +82,7 @@ jQuery(document).ready(function($) {
     });
 
     // Send invite
-    $('.mc-btn-send-invite').on('click', function() {
+    $('.mc-btn-send-invite').on('click', function () {
         const $btn = $(this);
         const employerId = $btn.data('employer-id');
         const employerEmail = $btn.data('employer-email');
@@ -101,7 +101,7 @@ jQuery(document).ready(function($) {
                 nonce: mcSuperAdmin.nonce,
                 employer_id: employerId
             },
-            success: function(response) {
+            success: function (response) {
                 if (response.success) {
                     alert(response.data.message);
                 } else {
@@ -109,7 +109,7 @@ jQuery(document).ready(function($) {
                 }
                 $btn.prop('disabled', false);
             },
-            error: function() {
+            error: function () {
                 alert('Network error. Please try again.');
                 $btn.prop('disabled', false);
             }
@@ -117,21 +117,21 @@ jQuery(document).ready(function($) {
     });
 
     // View employer details
-    $('.mc-btn-view').on('click', function() {
+    $('.mc-btn-view').on('click', function () {
         const employerId = $(this).data('employer-id');
         // Navigate to user edit page
         window.location.href = `user-edit.php?user_id=${employerId}`;
     });
 
     // Edit employer
-    $('.mc-btn-edit').on('click', function() {
+    $('.mc-btn-edit').on('click', function () {
         const employerId = $(this).data('employer-id');
         // Navigate to user edit page
         window.location.href = `user-edit.php?user_id=${employerId}`;
     });
 
     // Delete employer
-    $('.mc-btn-delete').on('click', function() {
+    $('.mc-btn-delete').on('click', function () {
         const $btn = $(this);
         const employerId = $btn.data('employer-id');
         const $row = $btn.closest('tr');
@@ -151,12 +151,12 @@ jQuery(document).ready(function($) {
                 nonce: mcSuperAdmin.nonce,
                 employer_id: employerId
             },
-            success: function(response) {
+            success: function (response) {
                 if (response.success) {
                     // Fade out and remove row
-                    $row.fadeOut(300, function() {
+                    $row.fadeOut(300, function () {
                         $(this).remove();
-                        
+
                         // Check if table is now empty
                         if ($('.mc-employers-table tbody tr').length === 0) {
                             window.location.reload();
@@ -167,7 +167,7 @@ jQuery(document).ready(function($) {
                     $btn.prop('disabled', false);
                 }
             },
-            error: function() {
+            error: function () {
                 alert('Network error. Please try again.');
                 $btn.prop('disabled', false);
             }
@@ -175,18 +175,37 @@ jQuery(document).ready(function($) {
     });
 
     // Search employers
-    $('#mc-employer-search').on('keyup', function() {
+    $('#mc-employer-search').on('keyup', function () {
         const searchTerm = $(this).val().toLowerCase().trim();
-        
-        $('.mc-employers-table tbody tr').each(function() {
+
+        $('.mc-employers-table tbody tr:not(.mc-details-row)').each(function () {
             const $row = $(this);
             const rowText = $row.text().toLowerCase();
-            
+            const $detailsRow = $row.next('.mc-details-row');
+
             if (rowText.includes(searchTerm)) {
                 $row.show();
+                // Keep details row hidden unless it was already open, but we need to ensure it's not orphaned
+                if ($row.find('.mc-accordion-toggle').hasClass('active')) {
+                    $detailsRow.show();
+                }
             } else {
                 $row.hide();
+                $detailsRow.hide();
             }
         });
+    });
+
+    // Accordion Toggle
+    $(document).on('click', '.mc-accordion-toggle', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const $btn = $(this);
+        const $row = $btn.closest('tr');
+        const $detailsRow = $row.next('.mc-details-row');
+
+        $btn.toggleClass('active');
+        $detailsRow.toggle();
     });
 });

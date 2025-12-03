@@ -266,14 +266,18 @@ class MC_Employer_Dashboard
             $values = sanitize_textarea_field($_POST['mc_values']);
             $culture = sanitize_textarea_field($_POST['mc_culture']);
 
-            $context = [
-                'industry' => $industry,
-                'values' => $values,
-                'culture' => $culture
-            ];
+            if (empty($industry) || empty($values) || empty($culture)) {
+                $resend_message = '<div class="mc-alert error">Please fill in all workplace settings fields.</div>';
+            } else {
+                $context = [
+                    'industry' => $industry,
+                    'values' => $values,
+                    'culture' => $culture
+                ];
 
-            update_user_meta($user_id, 'mc_workplace_context', $context);
-            $resend_message = '<div class="mc-alert success">Workplace context saved.</div>';
+                update_user_meta($user_id, 'mc_workplace_context', $context);
+                $resend_message = '<div class="mc-alert success">Workplace context saved.</div>';
+            }
         }
 
         // Handle Save Employee Context
@@ -282,15 +286,19 @@ class MC_Employer_Dashboard
             $role = sanitize_text_field($_POST['mc_role_title']);
             $responsibilities = sanitize_textarea_field($_POST['mc_responsibilities']);
 
-            // Verify ownership
-            $linked_employer = get_user_meta($emp_id, 'mc_linked_employer_id', true);
-            if (intval($linked_employer) === $user_id || current_user_can('manage_options')) {
-                $context = [
-                    'role' => $role,
-                    'responsibilities' => $responsibilities
-                ];
-                update_user_meta($emp_id, 'mc_employee_role_context', $context);
-                $resend_message = '<div class="mc-alert success">Employee context saved.</div>';
+            if (empty($role) || empty($responsibilities)) {
+                $resend_message = '<div class="mc-alert error">Please fill in the role title and responsibilities.</div>';
+            } else {
+                // Verify ownership
+                $linked_employer = get_user_meta($emp_id, 'mc_linked_employer_id', true);
+                if (intval($linked_employer) === $user_id || current_user_can('manage_options')) {
+                    $context = [
+                        'role' => $role,
+                        'responsibilities' => $responsibilities
+                    ];
+                    update_user_meta($emp_id, 'mc_employee_role_context', $context);
+                    $resend_message = '<div class="mc-alert success">Employee context saved.</div>';
+                }
             }
         }
 
@@ -711,19 +719,19 @@ class MC_Employer_Dashboard
                 <form method="post">
                     <input type="hidden" name="mc_save_workplace_context" value="1">
                     <div class="mc-form-group">
-                        <label>Industry / Sector</label>
+                        <label>Industry / Sector <span class="mc-required">*</span></label>
                         <input type="text" name="mc_industry" value="<?php echo esc_attr($wp_industry); ?>"
-                            placeholder="e.g. Tech, Healthcare, Retail">
+                            placeholder="e.g. Tech, Healthcare, Retail" required>
                     </div>
                     <div class="mc-form-group">
-                        <label>Company Values</label>
-                        <textarea name="mc_values" rows="3"
-                            placeholder="e.g. Innovation, Integrity, Customer Obsession"><?php echo esc_textarea($wp_values); ?></textarea>
+                        <label>Company Values <span class="mc-required">*</span></label>
+                        <textarea name="mc_values" rows="3" placeholder="e.g. Innovation, Integrity, Customer Obsession"
+                            required><?php echo esc_textarea($wp_values); ?></textarea>
                     </div>
                     <div class="mc-form-group">
-                        <label>Company Culture / About</label>
-                        <textarea name="mc_culture" rows="3"
-                            placeholder="Briefly describe your work environment..."><?php echo esc_textarea($wp_culture); ?></textarea>
+                        <label>Company Culture / About <span class="mc-required">*</span></label>
+                        <textarea name="mc_culture" rows="3" placeholder="Briefly describe your work environment..."
+                            required><?php echo esc_textarea($wp_culture); ?></textarea>
                     </div>
                     <button type="submit" class="mc-button">Save Context</button>
                 </form>
@@ -740,13 +748,13 @@ class MC_Employer_Dashboard
                     <input type="hidden" name="mc_save_employee_context" value="1">
                     <input type="hidden" name="mc_employee_id" id="mc_emp_id_input">
                     <div class="mc-form-group">
-                        <label>Role Title</label>
-                        <input type="text" name="mc_role_title" id="mc_role_input" placeholder="e.g. Senior Developer">
+                        <label>Role Title <span class="mc-required">*</span></label>
+                        <input type="text" name="mc_role_title" id="mc_role_input" placeholder="e.g. Senior Developer" required>
                     </div>
                     <div class="mc-form-group">
-                        <label>Key Responsibilities</label>
+                        <label>Key Responsibilities <span class="mc-required">*</span></label>
                         <textarea name="mc_responsibilities" id="mc_resp_input" rows="4"
-                            placeholder="Key duties and expectations..."></textarea>
+                            placeholder="Key duties and expectations..." required></textarea>
                     </div>
                     <button type="submit" class="mc-button">Save Details</button>
                 </form>
@@ -787,6 +795,15 @@ class MC_Employer_Dashboard
                                 </div>
                             </div>
                             <div class="mc-header-right" style="display: flex; align-items: flex-start; gap: 12px;">
+                                <button onclick="downloadReportPDF(this)" class="mc-btn mc-btn-secondary mc-btn-sm"
+                                    style="display: flex; align-items: center; gap: 6px; margin-top: 0;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                        stroke="currentColor" style="width: 16px; height: 16px;">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                    </svg>
+                                    PDF
+                                </button>
                                 <button id="mc-regenerate-report-btn" class="mc-btn mc-btn-secondary mc-btn-sm"
                                     style="display: flex; align-items: center; gap: 6px; margin-top: 0;">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -831,32 +848,52 @@ class MC_Employer_Dashboard
                             <p id="mc-hero-leadership-summary">--</p>
                         </div>
 
-                        <div class="mc-hero-main-grid">
-                            <!-- Left Column: Company Fit -->
-                            <div class="mc-hero-scores">
-                                <div class="mc-score-card mc-fit-card">
-                                    <h4>Company Fit</h4>
-                                    <div style="display:flex; align-items:center; gap:8px;">
-                                        <span id="mc-hero-fit-score"
-                                            style="font-size:2.5em; font-weight:800; color:var(--mc-primary);">--</span>
-                                        <span style="font-size:1em; color:#64748b;">/ 100</span>
+                        <div class="mc-hero-main-stack" style="display: flex; flex-direction: column; gap: 2rem;">
+                            <!-- Company Fit (Full Width) -->
+                            <div class="mc-hero-scores" style="width: 100%;">
+                                <div class="mc-score-card mc-fit-card"
+                                    style="display: flex; flex-direction: column; gap: 1rem; padding: 2rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                                        <div>
+                                            <h4
+                                                style="margin:0; font-size:1.1rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; font-weight: 600;">
+                                                Company Fit</h4>
+                                        </div>
+                                        <div style="display:flex; align-items:baseline; gap:8px;">
+                                            <span id="mc-hero-fit-score"
+                                                style="font-size:3em; font-weight:800; color:var(--mc-primary); line-height:1;">--</span>
+                                            <span style="font-size:1.2em; color:#94a3b8; font-weight:500;">/ 100</span>
+                                        </div>
                                     </div>
-                                    <p id="mc-hero-fit-rationale">--</p>
+                                    <div style="border-top: 1px solid #f1f5f9; padding-top: 1rem;">
+                                        <p id="mc-hero-fit-rationale"
+                                            style="margin: 0; font-size: 1.05rem; line-height: 1.6; color: #334155;">--</p>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Right Column: Insights -->
-                            <div class="mc-hero-insights">
-                                <div class="mc-insight-box">
-                                    <h4>Top Strengths</h4>
+                            <!-- Insights Row (3 Columns) -->
+                            <div class="mc-hero-insights"
+                                style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
+                                <div class="mc-insight-box"
+                                    style="background:#f8fafc; border-radius:12px; padding:1.5rem; border: 1px solid #e2e8f0;">
+                                    <h4
+                                        style="margin-top:0; color:#475569; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:1rem; font-weight: 700;">
+                                        Top Strengths</h4>
                                     <ul id="mc-hero-strengths" class="mc-pill-list"></ul>
                                 </div>
-                                <div class="mc-insight-box">
-                                    <h4>Potential Blindspots</h4>
+                                <div class="mc-insight-box"
+                                    style="background:#fff1f2; border-radius:12px; padding:1.5rem; border: 1px solid #ffe4e6;">
+                                    <h4
+                                        style="margin-top:0; color:#9f1239; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:1rem; font-weight: 700;">
+                                        Potential Blindspots</h4>
                                     <ul id="mc-hero-weaknesses" class="mc-pill-list"></ul>
                                 </div>
-                                <div class="mc-insight-box">
-                                    <h4>Key Motivators</h4>
+                                <div class="mc-insight-box"
+                                    style="background:#f0f9ff; border-radius:12px; padding:1.5rem; border: 1px solid #e0f2fe;">
+                                    <h4
+                                        style="margin-top:0; color:#0369a1; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:1rem; font-weight: 700;">
+                                        Key Motivators</h4>
                                     <ul id="mc-hero-motivators" class="mc-pill-list"></ul>
                                 </div>
                             </div>
@@ -1353,261 +1390,300 @@ class MC_Employer_Dashboard
                 margin-bottom: 20px;
             }
         </style>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
         <script>    const ajaxurl = '<?php echo admin_url('admin-ajax.php'); ?>';
-            const MC_COMPANY_NAME = '<?php echo esc_js($company_name); ?>';
+                                            const MC_COMPANY_NAME = '<?php echo esc_js($company_name); ?>';
 
-            function openWorkplaceModal() {
-                document.getElementById('mc-workplace-modal').style.display = 'block';
-            }
-            function closeWorkplaceModal() {
-                document.getElementById('mc-workplace-modal').style.display = 'none';
-            }
+                                            function downloadReportPDF(btn) {
+                                const element = document.getElementById('mc-report-content');
+                                const originalText = btn.innerHTML;
+                                btn.innerHTML = 'Downloading...';
+                                btn.disabled = true;
 
-            function openEmployeeModal(data) {
-                document.getElementById('mc_emp_id_input').value = data.id;
-                document.getElementById('mc-emp-name-display').textContent = 'For: ' + data.name;
-                document.getElementById('mc_role_input').value = data.context.role || '';
-                document.getElementById('mc_resp_input').value = data.context.responsibilities || '';
-                document.getElementById('mc-employee-modal').style.display = 'block';
-            }
-            function closeEmployeeModal() {
-                document.getElementById('mc-employee-modal').style.display = 'none';
-            }
+                                // Hide buttons for PDF
+                                const headerRight = element.querySelector('.mc-header-right');
+                                if (headerRight) headerRight.style.display = 'none';
 
-            let currentExpEmployeeId = null;
+                                // Calculate dimensions for single page
+                                const width = element.scrollWidth;
+                                const height = element.scrollHeight;
 
-            function closeExperimentsModal() {
-                document.getElementById('mc-experiments-modal').style.display = 'none';
-                currentExpEmployeeId = null;
-            }
+                                const opt = {
+                                    margin: 0,
+                                    filename: 'Employee_Analysis_Report.pdf',
+                                    image: { type: 'jpeg', quality: 0.98 },
+                                    html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                                    // Use custom format [width, height] in pixels to create one long page
+                                    jsPDF: { unit: 'px', format: [width, height + 40], orientation: 'portrait' }
+                                };
 
-            function openContextModal(empId) {
-                const modal = document.getElementById('mc-context-modal');
-                const genBtn = document.getElementById('mc-modal-generate-btn'); // Changed from mc-generate-btn
-
-                // Pre-fill values
-                const wrapper = document.getElementById('mc-dashboard-wrapper');
-                const defaultRole = wrapper ? wrapper.dataset.defaultRole : '';
-                const defaultWorkplace = wrapper ? wrapper.dataset.defaultWorkplace : '';
-
-                document.getElementById('mc-context-role').value = genBtn.dataset.roleContext || defaultRole || '';
-                document.getElementById('mc-context-workplace').value = genBtn.dataset.workplaceContext || defaultWorkplace || '';
-
-                modal.style.display = 'block'; // Changed from 'flex' to 'block' to match original
-
-                const confirmBtn = document.getElementById('mc-context-confirm-btn'); // Changed from mc-confirm-generate-btn
-                confirmBtn.onclick = function () {
-                    const roleCtx = document.getElementById('mc-context-role').value;
-                    const workplaceCtx = document.getElementById('mc-context-workplace').value;
-                    submitContextAndGenerate(empId, roleCtx, workplaceCtx, confirmBtn);
-                };
-            }
-
-            function closeContextModal() {
-                document.getElementById('mc-context-modal').style.display = 'none';
-            }
-
-            function openAnalysisModal(data) {
-                console.log('DEBUG: openAnalysisModal called - VERSION 1.2.8');
-                // Reset loading state
-                const loadingDiv = document.getElementById('mc-report-loading');
-                const contentDiv = document.getElementById('mc-report-content');
-                if (loadingDiv) loadingDiv.style.display = 'none';
-                if (contentDiv) contentDiv.style.display = 'block';
-
-                // Basic Info
-                document.getElementById('mc-analysis-name').textContent = data.name;
-
-                // Company Name
-                const companyLabel = document.getElementById('mc-analysis-company');
-                if (companyLabel) {
-                    companyLabel.textContent = (typeof MC_COMPANY_NAME !== 'undefined' && MC_COMPANY_NAME) ? MC_COMPANY_NAME : 'CONFIDENTIAL REPORT';
-                }
-
-                // Suitability/Fit Score
-                const scoreBadge = document.getElementById('mc-suitability-score-badge');
-                const scoreValue = document.getElementById('mc-suitability-score-value');
-
-                // Handle new overall_fit structure or fallback to old suitability_score
-                let fitScore = data.analysis.suitability_score;
-                let fitRationale = '';
-
-                if (data.analysis.overall_fit) {
-                    fitScore = data.analysis.overall_fit.score;
-                    fitRationale = data.analysis.overall_fit.rationale;
-                }
-                if (fitScore) {
-                    // Update Hero Fit Card
-                    const heroFitScore = document.getElementById('mc-hero-fit-score');
-                    const heroFitRationale = document.getElementById('mc-hero-fit-rationale');
-                    if (heroFitScore) heroFitScore.textContent = fitScore;
-                    if (heroFitRationale) heroFitRationale.textContent = fitRationale || 'Based on role & workplace context.';
-
-                    // Color coding logic...
-                    const score = parseInt(fitScore);
-                    if (score >= 80) {
-                        if (heroFitScore) heroFitScore.style.color = '#166534';
-                    } else if (score >= 60) {
-                        if (heroFitScore) heroFitScore.style.color = '#854d0e';
-                    } else {
-                        if (heroFitScore) heroFitScore.style.color = '#991b1b';
-                    }
-                }
-
-                // --- HERO SECTION ---
-                const execSnapshot = data.analysis.executive_snapshot || {};
-
-                // Context Summary
-                const contextSummary = document.getElementById('mc-hero-context-summary');
-                if (contextSummary) {
-                    contextSummary.textContent = execSnapshot.context_summary || 'Analysis based on provided role and workplace context.';
-                }
-
-                // Top Strengths
-                const strengthsList = document.getElementById('mc-hero-strengths');
-                strengthsList.innerHTML = '';
-                if (data.analysis.executive_snapshot.top_strengths) {
-                    data.analysis.executive_snapshot.top_strengths.forEach(str => {
-                        const li = document.createElement('li');
-                        li.textContent = str;
-                        strengthsList.appendChild(li);
-                    });
-                }
-
-                // Potential Blindspots (Weaknesses)
-                const weaknessesList = document.getElementById('mc-hero-weaknesses');
-                if (weaknessesList) {
-                    weaknessesList.innerHTML = '';
-                    if (data.analysis.executive_snapshot.top_weaknesses) {
-                        data.analysis.executive_snapshot.top_weaknesses.forEach(wk => {
-                            const li = document.createElement('li');
-                            li.textContent = wk;
-                            weaknessesList.appendChild(li);
-                        });
-                    } else {
-                        // Fallback if no top_weaknesses (e.g. old report)
-                        const li = document.createElement('li');
-                        li.textContent = "Regenerate report to see blindspots";
-                        li.style.fontStyle = "italic";
-                        li.style.color = "#94a3b8";
-                        li.style.background = "none";
-                        li.style.boxShadow = "none";
-                        li.style.border = "none";
-                        li.style.paddingLeft = "0";
-                        weaknessesList.appendChild(li);
-                    }
-                }
-
-                // Key Motivators
-                const heroMotivators = document.getElementById('mc-hero-motivators');
-                if (heroMotivators) {
-                    heroMotivators.innerHTML = '';
-                    (execSnapshot.key_motivators || []).forEach(m => {
-                        heroMotivators.innerHTML += `<li>${m}</li>`;
-                    });
-                }
-                // Leadership Potential (Moved to Hero)
-                const leadRating = document.getElementById('mc-hero-leadership-rating');
-                const leadSummary = document.getElementById('mc-hero-leadership-summary');
-                const leadership = data.analysis.leadership_potential || {};
-
-                if (leadRating) {
-                    leadRating.textContent = leadership.rating || 'Emerging';
-                    // Style badge based on rating
-                    const r = (leadership.rating || '').toLowerCase();
-                    if (r.includes('strong') || r.includes('high')) {
-                        leadRating.className = 'mc-badge registered'; // Greenish
-                    } else if (r.includes('emerging')) {
-                        leadRating.className = 'mc-badge pending'; // Yellowish
-                    } else {
-                        leadRating.className = 'mc-badge'; // Gray
-                    }
-                }
-                if (leadSummary) leadSummary.textContent = leadership.summary || '--';
-
-                // Ideal Conditions (Moved from Hero to Team section)
-                const conditions = document.getElementById('mc-hero-conditions');
-                if (conditions) conditions.textContent = execSnapshot.ideal_conditions || '--';
+                                html2pdf().set(opt).from(element).save().then(function () {
+                                    // Restore buttons
+                                    if (headerRight) headerRight.style.display = 'flex';
+                                    btn.innerHTML = originalText;
+                                    btn.disabled = false;
+                                }).catch(function (err) {
+                                    console.error(err);
+                                    alert('Error generating PDF');
+                                    if (headerRight) headerRight.style.display = 'flex';
+                                    btn.innerHTML = originalText;
+                                    btn.disabled = false;
+                                });
+                                            }
 
 
-                // --- COMMUNICATION PLAYBOOK ---
-                const comms = data.analysis.communication_playbook || {};
+                                            function openWorkplaceModal() {
+                                                document.getElementById('mc-workplace-modal').style.display = 'block';
+                                            }
+                                            function closeWorkplaceModal() {
+                                                document.getElementById('mc-workplace-modal').style.display = 'none';
+                                            }
 
-                const commDo = document.getElementById('mc-comm-do');
-                if (commDo) {
-                    commDo.innerHTML = '';
-                    (comms.do || []).forEach(item => commDo.innerHTML += `<li>${item}</li>`);
-                }
+                                            function openEmployeeModal(data) {
+                                                document.getElementById('mc_emp_id_input').value = data.id;
+                                                document.getElementById('mc-emp-name-display').textContent = 'For: ' + data.name;
+                                                document.getElementById('mc_role_input').value = data.context.role || '';
+                                                document.getElementById('mc_resp_input').value = data.context.responsibilities || '';
+                                                document.getElementById('mc-employee-modal').style.display = 'block';
+                                            }
+                                            function closeEmployeeModal() {
+                                                document.getElementById('mc-employee-modal').style.display = 'none';
+                                            }
 
-                const commAvoid = document.getElementById('mc-comm-avoid');
-                if (commAvoid) {
-                    commAvoid.innerHTML = '';
-                    (comms.avoid || []).forEach(item => commAvoid.innerHTML += `<li>${item}</li>`);
-                }
+                                            let currentExpEmployeeId = null;
 
-                const commFormat = document.getElementById('mc-comm-format');
-                if (commFormat) commFormat.textContent = comms.format || '--';
+                                            function closeExperimentsModal() {
+                                                document.getElementById('mc-experiments-modal').style.display = 'none';
+                                                currentExpEmployeeId = null;
+                                            }
+
+                                            function openContextModal(empId) {
+                                                const modal = document.getElementById('mc-context-modal');
+                                                const genBtn = document.getElementById('mc-modal-generate-btn'); // Changed from mc-generate-btn
+
+                                                // Pre-fill values
+                                                const wrapper = document.getElementById('mc-dashboard-wrapper');
+                                                const defaultRole = wrapper ? wrapper.dataset.defaultRole : '';
+                                                const defaultWorkplace = wrapper ? wrapper.dataset.defaultWorkplace : '';
+
+                                                document.getElementById('mc-context-role').value = genBtn.dataset.roleContext || defaultRole || '';
+                                                document.getElementById('mc-context-workplace').value = genBtn.dataset.workplaceContext || defaultWorkplace || '';
+
+                                                modal.style.display = 'block'; // Changed from 'flex' to 'block' to match original
+
+                                                const confirmBtn = document.getElementById('mc-context-confirm-btn'); // Changed from mc-confirm-generate-btn
+                                                confirmBtn.onclick = function () {
+                                                    const roleCtx = document.getElementById('mc-context-role').value;
+                                                    const workplaceCtx = document.getElementById('mc-context-workplace').value;
+                                                    submitContextAndGenerate(empId, roleCtx, workplaceCtx, confirmBtn);
+                                                };
+                                            }
+
+                                            function closeContextModal() {
+                                                document.getElementById('mc-context-modal').style.display = 'none';
+                                            }
+
+                                            function openAnalysisModal(data) {
+                                                console.log('DEBUG: openAnalysisModal called - VERSION 1.2.8');
+                                                // Reset loading state
+                                                const loadingDiv = document.getElementById('mc-report-loading');
+                                                const contentDiv = document.getElementById('mc-report-content');
+                                                if (loadingDiv) loadingDiv.style.display = 'none';
+                                                if (contentDiv) contentDiv.style.display = 'block';
+
+                                                // Basic Info
+                                                document.getElementById('mc-analysis-name').textContent = data.name;
+
+                                                // Company Name
+                                                const companyLabel = document.getElementById('mc-analysis-company');
+                                                if (companyLabel) {
+                                                    companyLabel.textContent = (typeof MC_COMPANY_NAME !== 'undefined' && MC_COMPANY_NAME) ? MC_COMPANY_NAME : 'CONFIDENTIAL REPORT';
+                                                }
+
+                                                // Suitability/Fit Score
+                                                const scoreBadge = document.getElementById('mc-suitability-score-badge');
+                                                const scoreValue = document.getElementById('mc-suitability-score-value');
+
+                                                // Handle new overall_fit structure or fallback to old suitability_score
+                                                let fitScore = data.analysis.suitability_score;
+                                                let fitRationale = '';
+
+                                                if (data.analysis.overall_fit) {
+                                                    fitScore = data.analysis.overall_fit.score;
+                                                    fitRationale = data.analysis.overall_fit.rationale;
+                                                }
+                                                if (fitScore) {
+                                                    // Update Hero Fit Card
+                                                    const heroFitScore = document.getElementById('mc-hero-fit-score');
+                                                    const heroFitRationale = document.getElementById('mc-hero-fit-rationale');
+                                                    if (heroFitScore) heroFitScore.textContent = fitScore;
+                                                    if (heroFitRationale) heroFitRationale.textContent = fitRationale || 'Based on role & workplace context.';
+
+                                                    // Color coding logic...
+                                                    const score = parseInt(fitScore);
+                                                    if (score >= 80) {
+                                                        if (heroFitScore) heroFitScore.style.color = '#166534';
+                                                    } else if (score >= 60) {
+                                                        if (heroFitScore) heroFitScore.style.color = '#854d0e';
+                                                    } else {
+                                                        if (heroFitScore) heroFitScore.style.color = '#991b1b';
+                                                    }
+                                                }
+
+                                                // --- HERO SECTION ---
+                                                const execSnapshot = data.analysis.executive_snapshot || {};
+
+                                                // Context Summary
+                                                const contextSummary = document.getElementById('mc-hero-context-summary');
+                                                if (contextSummary) {
+                                                    contextSummary.textContent = execSnapshot.context_summary || 'Analysis based on provided role and workplace context.';
+                                                }
+
+                                                // Top Strengths
+                                                const strengthsList = document.getElementById('mc-hero-strengths');
+                                                strengthsList.innerHTML = '';
+                                                if (data.analysis.executive_snapshot.top_strengths) {
+                                                    data.analysis.executive_snapshot.top_strengths.forEach(str => {
+                                                        const li = document.createElement('li');
+                                                        li.textContent = str;
+                                                        strengthsList.appendChild(li);
+                                                    });
+                                                }
+
+                                                // Potential Blindspots (Weaknesses)
+                                                const weaknessesList = document.getElementById('mc-hero-weaknesses');
+                                                if (weaknessesList) {
+                                                    weaknessesList.innerHTML = '';
+                                                    if (data.analysis.executive_snapshot.top_weaknesses) {
+                                                        data.analysis.executive_snapshot.top_weaknesses.forEach(wk => {
+                                                            const li = document.createElement('li');
+                                                            li.textContent = wk;
+                                                            weaknessesList.appendChild(li);
+                                                        });
+                                                    } else {
+                                                        // Fallback if no top_weaknesses (e.g. old report)
+                                                        const li = document.createElement('li');
+                                                        li.textContent = "Regenerate report to see blindspots";
+                                                        li.style.fontStyle = "italic";
+                                                        li.style.color = "#94a3b8";
+                                                        li.style.background = "none";
+                                                        li.style.boxShadow = "none";
+                                                        li.style.border = "none";
+                                                        li.style.paddingLeft = "0";
+                                                        weaknessesList.appendChild(li);
+                                                    }
+                                                }
+
+                                                // Key Motivators
+                                                const heroMotivators = document.getElementById('mc-hero-motivators');
+                                                if (heroMotivators) {
+                                                    heroMotivators.innerHTML = '';
+                                                    (execSnapshot.key_motivators || []).forEach(m => {
+                                                        heroMotivators.innerHTML += `<li>${m}</li>`;
+                                                    });
+                                                }
+                                                // Leadership Potential (Moved to Hero)
+                                                const leadRating = document.getElementById('mc-hero-leadership-rating');
+                                                const leadSummary = document.getElementById('mc-hero-leadership-summary');
+                                                const leadership = data.analysis.leadership_potential || {};
+
+                                                if (leadRating) {
+                                                    leadRating.textContent = leadership.rating || 'Emerging';
+                                                    // Style badge based on rating
+                                                    const r = (leadership.rating || '').toLowerCase();
+                                                    if (r.includes('strong') || r.includes('high')) {
+                                                        leadRating.className = 'mc-badge registered'; // Greenish
+                                                    } else if (r.includes('emerging')) {
+                                                        leadRating.className = 'mc-badge pending'; // Yellowish
+                                                    } else {
+                                                        leadRating.className = 'mc-badge'; // Gray
+                                                    }
+                                                }
+                                                if (leadSummary) leadSummary.textContent = leadership.summary || '--';
+
+                                                // Ideal Conditions (Moved from Hero to Team section)
+                                                const conditions = document.getElementById('mc-hero-conditions');
+                                                if (conditions) conditions.textContent = execSnapshot.ideal_conditions || '--';
 
 
-                // --- MOTIVATION & WORK STYLE ---
-                const motiv = data.analysis.motivation_profile || {};
-                const work = data.analysis.work_style || {};
+                                                // --- COMMUNICATION PLAYBOOK ---
+                                                const comms = data.analysis.communication_playbook || {};
 
-                const energizers = document.getElementById('mc-motiv-energizers');
-                if (energizers) {
-                    energizers.innerHTML = '';
-                    (motiv.energizers || []).forEach(item => energizers.innerHTML += `<li>${item}</li>`);
-                }
+                                                const commDo = document.getElementById('mc-comm-do');
+                                                if (commDo) {
+                                                    commDo.innerHTML = '';
+                                                    (comms.do || []).forEach(item => commDo.innerHTML += `<li>${item}</li>`);
+                                                }
 
-                const drainers = document.getElementById('mc-motiv-drainers');
-                if (drainers) {
-                    drainers.innerHTML = '';
-                    (motiv.drainers || []).forEach(item => drainers.innerHTML += `<li>${item}</li>`);
-                }
+                                                const commAvoid = document.getElementById('mc-comm-avoid');
+                                                if (commAvoid) {
+                                                    commAvoid.innerHTML = '';
+                                                    (comms.avoid || []).forEach(item => commAvoid.innerHTML += `<li>${item}</li>`);
+                                                }
 
-                const workApproach = document.getElementById('mc-work-approach');
-                if (workApproach) workApproach.textContent = work.approach || '--';
-
-                const workBest = document.getElementById('mc-work-best');
-                if (workBest) {
-                    workBest.innerHTML = '';
-                    (work.best_when || []).forEach(item => workBest.innerHTML += `<li>${item}</li>`);
-                }
-
-                const workStruggle = document.getElementById('mc-work-struggle');
-                if (workStruggle) {
-                    workStruggle.innerHTML = '';
-                    (work.struggles_when || []).forEach(item => workStruggle.innerHTML += `<li>${item}</li>`);
-                }
+                                                const commFormat = document.getElementById('mc-comm-format');
+                                                if (commFormat) commFormat.textContent = comms.format || '--';
 
 
-                // --- COACHING RECOMMENDATIONS (Cards) ---
-                const coachingContainer = document.getElementById('mc-coaching-container');
-                if (coachingContainer) {
-                    coachingContainer.innerHTML = '';
-                    (data.analysis.coaching_recommendations || []).forEach(rec => {
-                        const card = document.createElement('div');
-                        card.className = 'mc-card mc-coaching-card';
-                        card.innerHTML = `
+                                                // --- MOTIVATION & WORK STYLE ---
+                                                const motiv = data.analysis.motivation_profile || {};
+                                                const work = data.analysis.work_style || {};
+
+                                                const energizers = document.getElementById('mc-motiv-energizers');
+                                                if (energizers) {
+                                                    energizers.innerHTML = '';
+                                                    (motiv.energizers || []).forEach(item => energizers.innerHTML += `<li>${item}</li>`);
+                                                }
+
+                                                const drainers = document.getElementById('mc-motiv-drainers');
+                                                if (drainers) {
+                                                    drainers.innerHTML = '';
+                                                    (motiv.drainers || []).forEach(item => drainers.innerHTML += `<li>${item}</li>`);
+                                                }
+
+                                                const workApproach = document.getElementById('mc-work-approach');
+                                                if (workApproach) workApproach.textContent = work.approach || '--';
+
+                                                const workBest = document.getElementById('mc-work-best');
+                                                if (workBest) {
+                                                    workBest.innerHTML = '';
+                                                    (work.best_when || []).forEach(item => workBest.innerHTML += `<li>${item}</li>`);
+                                                }
+
+                                                const workStruggle = document.getElementById('mc-work-struggle');
+                                                if (workStruggle) {
+                                                    workStruggle.innerHTML = '';
+                                                    (work.struggles_when || []).forEach(item => workStruggle.innerHTML += `<li>${item}</li>`);
+                                                }
+
+
+                                                // --- COACHING RECOMMENDATIONS (Cards) ---
+                                                const coachingContainer = document.getElementById('mc-coaching-container');
+                                                if (coachingContainer) {
+                                                    coachingContainer.innerHTML = '';
+                                                    (data.analysis.coaching_recommendations || []).forEach(rec => {
+                                                        const card = document.createElement('div');
+                                                        card.className = 'mc-card mc-coaching-card';
+                                                        card.innerHTML = `
                             <h4>${rec.title}</h4>
                             <p class="mc-card-rationale">${rec.rationale}</p>
                             <div class="mc-card-example">
                                 <strong>Try:</strong> ${rec.example}
                             </div>
                         `;
-                        coachingContainer.appendChild(card);
-                    });
-                }
+                                                        coachingContainer.appendChild(card);
+                                                    });
+                                                }
 
 
-                // --- GROWTH EDGES (Cards) ---
-                const growthContainer = document.getElementById('mc-growth-container');
-                if (growthContainer) {
-                    growthContainer.innerHTML = '';
-                    (data.analysis.growth_edges || []).forEach(edge => {
-                        const card = document.createElement('div');
-                        card.className = 'mc-card mc-growth-card';
-                        card.innerHTML = `
+                                                // --- GROWTH EDGES (Cards) ---
+                                                const growthContainer = document.getElementById('mc-growth-container');
+                                                if (growthContainer) {
+                                                    growthContainer.innerHTML = '';
+                                                    (data.analysis.growth_edges || []).forEach(edge => {
+                                                        const card = document.createElement('div');
+                                                        card.className = 'mc-card mc-growth-card';
+                                                        card.innerHTML = `
                             <div class="mc-card-header">
                                 <h4>${edge.assignment}</h4>
                                 <span class="mc-badge mc-badge-${(edge.risk_level || 'low').toLowerCase()}">${edge.risk_level} Risk</span>
@@ -1615,353 +1691,353 @@ class MC_Employer_Dashboard
                             <p><strong>Action:</strong> ${edge.action}</p>
                             <p class="mc-card-meta">Builds: ${edge.capacity}</p>
                         `;
-                        growthContainer.appendChild(card);
-                    });
-                }
+                                                        growthContainer.appendChild(card);
+                                                    });
+                                                }
 
 
-                // --- TEAM & LEADERSHIP ---
-                const team = data.analysis.team_collaboration || {};
-                const lead = data.analysis.leadership_potential || {};
+                                                // --- TEAM & LEADERSHIP ---
+                                                const team = data.analysis.team_collaboration || {};
+                                                const lead = data.analysis.leadership_potential || {};
 
-                if (document.getElementById('mc-team-thrives')) document.getElementById('mc-team-thrives').textContent = team.thrives_with || '--';
-                if (document.getElementById('mc-team-friction')) document.getElementById('mc-team-friction').textContent = team.friction_with || '--';
+                                                if (document.getElementById('mc-team-thrives')) document.getElementById('mc-team-thrives').textContent = team.thrives_with || '--';
+                                                if (document.getElementById('mc-team-friction')) document.getElementById('mc-team-friction').textContent = team.friction_with || '--';
 
-                // Leadership Potential Spectrum
-                const leadershipRating = (data.analysis.leadership_potential && data.analysis.leadership_potential.rating) ? data.analysis.leadership_potential.rating.toLowerCase() : '';
-                const leadershipSummary = (data.analysis.leadership_potential && data.analysis.leadership_potential.summary) ? data.analysis.leadership_potential.summary : 'No data available.';
+                                                // Leadership Potential Spectrum
+                                                const leadershipRating = (data.analysis.leadership_potential && data.analysis.leadership_potential.rating) ? data.analysis.leadership_potential.rating.toLowerCase() : '';
+                                                const leadershipSummary = (data.analysis.leadership_potential && data.analysis.leadership_potential.summary) ? data.analysis.leadership_potential.summary : 'No data available.';
 
-                document.getElementById('mc-hero-leadership-summary').textContent = leadershipSummary;
+                                                document.getElementById('mc-hero-leadership-summary').textContent = leadershipSummary;
 
-                // Reset Spectrum
-                document.querySelectorAll('.mc-spectrum-segment').forEach(el => el.classList.remove('active'));
+                                                // Reset Spectrum
+                                                document.querySelectorAll('.mc-spectrum-segment').forEach(el => el.classList.remove('active'));
 
-                // Activate Segment
-                if (leadershipRating.includes('strong')) {
-                    document.querySelector('.mc-spectrum-segment[data-level="strong"]')?.classList.add('active');
-                } else if (leadershipRating.includes('developing')) {
-                    document.querySelector('.mc-spectrum-segment[data-level="developing"]')?.classList.add('active');
-                } else if (leadershipRating.includes('emerging')) {
-                    document.querySelector('.mc-spectrum-segment[data-level="emerging"]')?.classList.add('active');
-                } else {
-                    // Default to Individual (covers "Individual Focus" or fallback)
-                    document.querySelector('.mc-spectrum-segment[data-level="individual"]')?.classList.add('active');
-                }
+                                                // Activate Segment
+                                                if (leadershipRating.includes('strong')) {
+                                                    document.querySelector('.mc-spectrum-segment[data-level="strong"]')?.classList.add('active');
+                                                } else if (leadershipRating.includes('developing')) {
+                                                    document.querySelector('.mc-spectrum-segment[data-level="developing"]')?.classList.add('active');
+                                                } else if (leadershipRating.includes('emerging')) {
+                                                    document.querySelector('.mc-spectrum-segment[data-level="emerging"]')?.classList.add('active');
+                                                } else {
+                                                    // Default to Individual (covers "Individual Focus" or fallback)
+                                                    document.querySelector('.mc-spectrum-segment[data-level="individual"]')?.classList.add('active');
+                                                }
 
-                // --- MANAGER FAST GUIDE (Sidebar) ---
-                const guide = data.analysis.manager_fast_guide || {};
+                                                // --- MANAGER FAST GUIDE (Sidebar) ---
+                                                const guide = data.analysis.manager_fast_guide || {};
 
-                const guideStrengths = document.getElementById('mc-guide-strengths');
-                if (guideStrengths) {
-                    guideStrengths.innerHTML = '';
-                    (guide.strengths || []).forEach(item => guideStrengths.innerHTML += `<li>${item}</li>`);
-                }
+                                                const guideStrengths = document.getElementById('mc-guide-strengths');
+                                                if (guideStrengths) {
+                                                    guideStrengths.innerHTML = '';
+                                                    (guide.strengths || []).forEach(item => guideStrengths.innerHTML += `<li>${item}</li>`);
+                                                }
 
-                const guideMotivators = document.getElementById('mc-guide-motivators');
-                if (guideMotivators) {
-                    guideMotivators.innerHTML = '';
-                    (guide.motivators || []).forEach(item => guideMotivators.innerHTML += `<li>${item}</li>`);
-                }
+                                                const guideMotivators = document.getElementById('mc-guide-motivators');
+                                                if (guideMotivators) {
+                                                    guideMotivators.innerHTML = '';
+                                                    (guide.motivators || []).forEach(item => guideMotivators.innerHTML += `<li>${item}</li>`);
+                                                }
 
-                const guideComm = document.getElementById('mc-guide-comm');
-                if (guideComm) {
-                    guideComm.innerHTML = '';
-                    (guide.communication || []).forEach(item => guideComm.innerHTML += `<li>${item}</li>`);
-                }
+                                                const guideComm = document.getElementById('mc-guide-comm');
+                                                if (guideComm) {
+                                                    guideComm.innerHTML = '';
+                                                    (guide.communication || []).forEach(item => guideComm.innerHTML += `<li>${item}</li>`);
+                                                }
 
-                const guideCoaching = document.getElementById('mc-guide-coaching');
-                if (guideCoaching) {
-                    guideCoaching.innerHTML = '';
-                    (guide.coaching_moves || []).forEach(item => guideCoaching.innerHTML += `<li>${item}</li>`);
-                }
+                                                const guideCoaching = document.getElementById('mc-guide-coaching');
+                                                if (guideCoaching) {
+                                                    guideCoaching.innerHTML = '';
+                                                    (guide.coaching_moves || []).forEach(item => guideCoaching.innerHTML += `<li>${item}</li>`);
+                                                }
 
-                if (document.getElementById('mc-guide-growth')) document.getElementById('mc-guide-growth').textContent = guide.growth_edge || '--';
-
-
-                // --- CONFLICT & STRESS ---
-                const stress = data.analysis.conflict_stress || {};
-                if (document.getElementById('mc-stress-handling')) document.getElementById('mc-stress-handling').textContent = stress.handling || '--';
-                if (document.getElementById('mc-stress-signs')) document.getElementById('mc-stress-signs').textContent = stress.signs || '--';
-                if (document.getElementById('mc-stress-support')) document.getElementById('mc-stress-support').textContent = stress.support || '--';
+                                                if (document.getElementById('mc-guide-growth')) document.getElementById('mc-guide-growth').textContent = guide.growth_edge || '--';
 
 
-                // --- REGENERATE BUTTON HANDLER ---
-                const oldRegenBtn = document.getElementById('mc-regenerate-report-btn');
-                if (oldRegenBtn) {
-                    const regenBtn = oldRegenBtn.cloneNode(true);
-                    oldRegenBtn.parentNode.replaceChild(regenBtn, oldRegenBtn);
-                    regenBtn.disabled = false;
-                    regenBtn.innerHTML = `
+                                                // --- CONFLICT & STRESS ---
+                                                const stress = data.analysis.conflict_stress || {};
+                                                if (document.getElementById('mc-stress-handling')) document.getElementById('mc-stress-handling').textContent = stress.handling || '--';
+                                                if (document.getElementById('mc-stress-signs')) document.getElementById('mc-stress-signs').textContent = stress.signs || '--';
+                                                if (document.getElementById('mc-stress-support')) document.getElementById('mc-stress-support').textContent = stress.support || '--';
+
+
+                                                // --- REGENERATE BUTTON HANDLER ---
+                                                const oldRegenBtn = document.getElementById('mc-regenerate-report-btn');
+                                                if (oldRegenBtn) {
+                                                    const regenBtn = oldRegenBtn.cloneNode(true);
+                                                    oldRegenBtn.parentNode.replaceChild(regenBtn, oldRegenBtn);
+                                                    regenBtn.disabled = false;
+                                                    regenBtn.innerHTML = `
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 16px; height: 16px;">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
                         </svg>
                         Regenerate
                     `;
-                    regenBtn.onclick = function (e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        generateAnalysisReport(data.id, this);
-                    };
-                }
+                                                    regenBtn.onclick = function (e) {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        generateAnalysisReport(data.id, this);
+                                                    };
+                                                }
 
-                // Show Modal
-                const modal = document.getElementById('mc-analysis-modal');
-                if (modal) {
-                    modal.style.display = 'block';
-                }
-            }
+                                                // Show Modal
+                                                const modal = document.getElementById('mc-analysis-modal');
+                                                if (modal) {
+                                                    modal.style.display = 'block';
+                                                }
+                                            }
 
-            function closeAnalysisModal() {
-                document.getElementById('mc-analysis-modal').style.display = 'none';
-            }
+                                            function closeAnalysisModal() {
+                                                document.getElementById('mc-analysis-modal').style.display = 'none';
+                                            }
 
-            function generateAnalysisReport(userId, btn) {
-                const originalHTML = btn.innerHTML;
-                // Update button state with spinner and text
-                btn.innerHTML = '<svg class="spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 16px; height: 16px; margin-right: 5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg> Regenerating...';
-                btn.disabled = true;
+                                            function generateAnalysisReport(userId, btn) {
+                                                const originalHTML = btn.innerHTML;
+                                                // Update button state with spinner and text
+                                                btn.innerHTML = '<svg class="spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 16px; height: 16px; margin-right: 5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg> Regenerating...';
+                                                btn.disabled = true;
 
-                const data = new URLSearchParams();
-                data.append('action', 'mc_generate_analysis_report');
-                data.append('user_id', userId);
+                                                const data = new URLSearchParams();
+                                                data.append('action', 'mc_generate_analysis_report');
+                                                data.append('user_id', userId);
 
-                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
-                    method: 'POST',
-                    body: data
-                })
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result.success) {
-                            // Update the modal with the new data
-                            openAnalysisModal(result.data);
+                                                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                                                    method: 'POST',
+                                                    body: data
+                                                })
+                                                    .then(response => response.json())
+                                                    .then(result => {
+                                                        if (result.success) {
+                                                            // Update the modal with the new data
+                                                            openAnalysisModal(result.data);
 
-                            // Reset button state
-                            btn.innerHTML = originalHTML;
-                            btn.disabled = false;
-                        } else {
-                            alert(result.data.message || 'Failed to generate report. Please try again.');
-                            btn.innerHTML = originalHTML;
-                            btn.disabled = false;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('An error occurred. Please try again.');
-                        btn.innerHTML = originalHTML;
-                        btn.disabled = false;
-                    });
-            }
+                                                            // Reset button state
+                                                            btn.innerHTML = originalHTML;
+                                                            btn.disabled = false;
+                                                        } else {
+                                                            alert(result.data.message || 'Failed to generate report. Please try again.');
+                                                            btn.innerHTML = originalHTML;
+                                                            btn.disabled = false;
+                                                        }
+                                                    })
+                                                    .catch(error => {
+                                                        console.error('Error:', error);
+                                                        alert('An error occurred. Please try again.');
+                                                        btn.innerHTML = originalHTML;
+                                                        btn.disabled = false;
+                                                    });
+                                            }
 
-            function submitContextAndGenerate(empId, roleCtx, workplaceCtx, btn) {
-                const originalText = btn.textContent;
-                btn.textContent = 'Generating...';
-                btn.disabled = true;
+                                            function submitContextAndGenerate(empId, roleCtx, workplaceCtx, btn) {
+                                                const originalText = btn.textContent;
+                                                btn.textContent = 'Generating...';
+                                                btn.disabled = true;
 
-                const data = new URLSearchParams();
-                data.append('action', 'mc_employer_generate_experiments');
-                data.append('employee_id', empId);
-                data.append('role_context', roleCtx);
-                data.append('workplace_context', workplaceCtx);
+                                                const data = new URLSearchParams();
+                                                data.append('action', 'mc_employer_generate_experiments');
+                                                data.append('employee_id', empId);
+                                                data.append('role_context', roleCtx);
+                                                data.append('workplace_context', workplaceCtx);
 
-                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
-                    method: 'POST',
-                    body: data
-                })
-                    .then(res => res.json())
-                    .then(res => {
-                        if (res.success) {
-                            closeContextModal();
-                            if (currentExpEmployeeId && currentExpEmployeeId == empId) {
-                                loadExperiments(empId);
-                            }
-                            alert(res.data.message || 'Experiments generated successfully!');
-                        } else {
-                            alert(res.data.message || 'Error generating experiments.');
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        alert('Network error.');
-                    })
-                    .finally(() => {
-                        btn.textContent = originalText;
-                        btn.disabled = false;
-                    });
-            }
+                                                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                                                    method: 'POST',
+                                                    body: data
+                                                })
+                                                    .then(res => res.json())
+                                                    .then(res => {
+                                                        if (res.success) {
+                                                            closeContextModal();
+                                                            if (currentExpEmployeeId && currentExpEmployeeId == empId) {
+                                                                loadExperiments(empId);
+                                                            }
+                                                            alert(res.data.message || 'Experiments generated successfully!');
+                                                        } else {
+                                                            alert(res.data.message || 'Error generating experiments.');
+                                                        }
+                                                    })
+                                                    .catch(err => {
+                                                        console.error(err);
+                                                        alert('Network error.');
+                                                    })
+                                                    .finally(() => {
+                                                        btn.textContent = originalText;
+                                                        btn.disabled = false;
+                                                    });
+                                            }
 
-            function generateExperiments(empId, btn) {
-                openContextModal(empId);
-            }
+                                            function generateExperiments(empId, btn) {
+                                                openContextModal(empId);
+                                            }
 
-            function copyInviteLink(link, btn) {
-                if (!link) {
-                    console.error('No link to copy');
-                    return;
-                }
+                                            function copyInviteLink(link, btn) {
+                                                if (!link) {
+                                                    console.error('No link to copy');
+                                                    return;
+                                                }
 
-                // Try modern API first
-                if (navigator.clipboard && window.isSecureContext) {
-                    navigator.clipboard.writeText(link).then(function () {
-                        showCopySuccess(btn);
-                    }, function (err) {
-                        console.error('Could not copy text: ', err);
-                        fallbackCopyTextToClipboard(link, btn);
-                    });
-                } else {
-                    // Fallback
-                    fallbackCopyTextToClipboard(link, btn);
-                }
-            }
+                                                // Try modern API first
+                                                if (navigator.clipboard && window.isSecureContext) {
+                                                    navigator.clipboard.writeText(link).then(function () {
+                                                        showCopySuccess(btn);
+                                                    }, function (err) {
+                                                        console.error('Could not copy text: ', err);
+                                                        fallbackCopyTextToClipboard(link, btn);
+                                                    });
+                                                } else {
+                                                    // Fallback
+                                                    fallbackCopyTextToClipboard(link, btn);
+                                                }
+                                            }
 
-            function fallbackCopyTextToClipboard(text, btn) {
-                var textArea = document.createElement("textarea");
-                textArea.value = text;
+                                            function fallbackCopyTextToClipboard(text, btn) {
+                                                var textArea = document.createElement("textarea");
+                                                textArea.value = text;
 
-                // Avoid scrolling to bottom
-                textArea.style.top = "0";
-                textArea.style.left = "0";
-                textArea.style.position = "fixed";
+                                                // Avoid scrolling to bottom
+                                                textArea.style.top = "0";
+                                                textArea.style.left = "0";
+                                                textArea.style.position = "fixed";
 
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
+                                                document.body.appendChild(textArea);
+                                                textArea.focus();
+                                                textArea.select();
 
-                try {
-                    var successful = document.execCommand('copy');
-                    if (successful) {
-                        showCopySuccess(btn);
-                    } else {
-                        console.error('Fallback: Copying text command was unsuccessful');
-                    }
-                } catch (err) {
-                    console.error('Fallback: Oops, unable to copy', err);
-                }
+                                                try {
+                                                    var successful = document.execCommand('copy');
+                                                    if (successful) {
+                                                        showCopySuccess(btn);
+                                                    } else {
+                                                        console.error('Fallback: Copying text command was unsuccessful');
+                                                    }
+                                                } catch (err) {
+                                                    console.error('Fallback: Oops, unable to copy', err);
+                                                }
 
-                document.body.removeChild(textArea);
-            }
+                                                document.body.removeChild(textArea);
+                                            }
 
-            function showCopySuccess(btn) {
-                const originalContent = btn.innerHTML;
-                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>';
-                btn.classList.add('success');
-                setTimeout(() => {
-                    btn.innerHTML = originalContent;
-                    btn.classList.remove('success');
-                }, 2000);
-            }
+                                            function showCopySuccess(btn) {
+                                                const originalContent = btn.innerHTML;
+                                                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>';
+                                                btn.classList.add('success');
+                                                setTimeout(() => {
+                                                    btn.innerHTML = originalContent;
+                                                    btn.classList.remove('success');
+                                                }, 2000);
+                                            }
 
-            function filterTeam(status, btn) {
-                // Update active button
-                document.querySelectorAll('.mc-filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
+                                            function filterTeam(status, btn) {
+                                                // Update active button
+                                                document.querySelectorAll('.mc-filter-btn').forEach(b => b.classList.remove('active'));
+                                                btn.classList.add('active');
 
-                // Filter rows
-                const rows = document.querySelectorAll('.mc-team-row');
-                rows.forEach(row => {
-                    const rowStatus = row.getAttribute('data-status');
-                    if (status === 'all') {
-                        // Show all except archived
-                        if (rowStatus === 'archived') {
-                            row.style.display = 'none';
-                        } else {
-                            row.style.display = '';
-                        }
-                    } else if (status === 'active') {
-                        // Active shows both 'registered' and 'all-assessments-complete'
-                        if (rowStatus === 'registered' || rowStatus === 'all-assessments-complete') {
-                            row.style.display = '';
-                        } else {
-                            row.style.display = 'none';
-                        }
-                    } else if (status === 'complete') {
-                        // Complete shows only 'all-assessments-complete'
-                        if (rowStatus === 'all-assessments-complete') {
-                            row.style.display = '';
-                        } else {
-                            row.style.display = 'none';
-                        }
-                    } else if (status === 'archived') {
-                        // Archived shows only archived
-                        if (rowStatus === 'archived') {
-                            row.style.display = '';
-                        } else {
-                            row.style.display = 'none';
-                        }
-                    } else {
-                        // For other statuses (pending, etc.), match exactly
-                        if (rowStatus === status) {
-                            row.style.display = '';
-                        } else {
-                            row.style.display = 'none';
-                        }
-                    }
-                });
-            }
+                                                // Filter rows
+                                                const rows = document.querySelectorAll('.mc-team-row');
+                                                rows.forEach(row => {
+                                                    const rowStatus = row.getAttribute('data-status');
+                                                    if (status === 'all') {
+                                                        // Show all except archived
+                                                        if (rowStatus === 'archived') {
+                                                            row.style.display = 'none';
+                                                        } else {
+                                                            row.style.display = '';
+                                                        }
+                                                    } else if (status === 'active') {
+                                                        // Active shows both 'registered' and 'all-assessments-complete'
+                                                        if (rowStatus === 'registered' || rowStatus === 'all-assessments-complete') {
+                                                            row.style.display = '';
+                                                        } else {
+                                                            row.style.display = 'none';
+                                                        }
+                                                    } else if (status === 'complete') {
+                                                        // Complete shows only 'all-assessments-complete'
+                                                        if (rowStatus === 'all-assessments-complete') {
+                                                            row.style.display = '';
+                                                        } else {
+                                                            row.style.display = 'none';
+                                                        }
+                                                    } else if (status === 'archived') {
+                                                        // Archived shows only archived
+                                                        if (rowStatus === 'archived') {
+                                                            row.style.display = '';
+                                                        } else {
+                                                            row.style.display = 'none';
+                                                        }
+                                                    } else {
+                                                        // For other statuses (pending, etc.), match exactly
+                                                        if (rowStatus === status) {
+                                                            row.style.display = '';
+                                                        } else {
+                                                            row.style.display = 'none';
+                                                        }
+                                                    }
+                                                });
+                                            }
 
-            // Initialize filter to hide archived by default
-            document.addEventListener('DOMContentLoaded', function () {
-                const rows = document.querySelectorAll('.mc-team-row');
-                rows.forEach(row => {
-                    if (row.getAttribute('data-status') === 'archived') {
-                        row.style.display = 'none';
-                    }
-                });
-            });
-            function openExperimentsModal(data) {
-                currentExpEmployeeId = data.id;
-                document.getElementById('mc-experiments-modal').style.display = 'block';
-                document.getElementById('mc-exp-modal-title').textContent = 'Experiments for ' + data.name;
+                                            // Initialize filter to hide archived by default
+                                            document.addEventListener('DOMContentLoaded', function () {
+                                                const rows = document.querySelectorAll('.mc-team-row');
+                                                rows.forEach(row => {
+                                                    if (row.getAttribute('data-status') === 'archived') {
+                                                        row.style.display = 'none';
+                                                    }
+                                                });
+                                            });
+                                            function openExperimentsModal(data) {
+                                                currentExpEmployeeId = data.id;
+                                                document.getElementById('mc-experiments-modal').style.display = 'block';
+                                                document.getElementById('mc-exp-modal-title').textContent = 'Experiments for ' + data.name;
 
-                // Update Generate button in modal to point to this employee
-                const genBtn = document.getElementById('mc-modal-generate-btn');
-                if (genBtn) {
-                    genBtn.onclick = function () { generateExperiments(data.id, this); };
-                }
+                                                // Update Generate button in modal to point to this employee
+                                                const genBtn = document.getElementById('mc-modal-generate-btn');
+                                                if (genBtn) {
+                                                    genBtn.onclick = function () { generateExperiments(data.id, this); };
+                                                }
 
-                loadExperiments(data.id);
-            }
+                                                loadExperiments(data.id);
+                                            }
 
-            function loadExperiments(empId) {
-                const list = document.getElementById('mc-experiments-list');
-                list.innerHTML = '<p>Loading...</p>';
+                                            function loadExperiments(empId) {
+                                                const list = document.getElementById('mc-experiments-list');
+                                                list.innerHTML = '<p>Loading...</p>';
 
-                const data = new URLSearchParams();
-                data.append('action', 'mc_employer_get_experiments');
-                data.append('employee_id', empId);
+                                                const data = new URLSearchParams();
+                                                data.append('action', 'mc_employer_get_experiments');
+                                                data.append('employee_id', empId);
 
-                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
-                    method: 'POST',
-                    body: data
-                })
-                    .then(res => res.json())
-                    .then(res => {
-                        if (res.success) {
-                            renderExperimentsList(res.data.experiments, empId);
-                        } else {
-                            list.innerHTML = '<p>Error loading experiments.</p>';
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        list.innerHTML = '<p>Network error.</p>';
-                    });
-            }
+                                                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                                                    method: 'POST',
+                                                    body: data
+                                                })
+                                                    .then(res => res.json())
+                                                    .then(res => {
+                                                        if (res.success) {
+                                                            renderExperimentsList(res.data.experiments, empId);
+                                                        } else {
+                                                            list.innerHTML = '<p>Error loading experiments.</p>';
+                                                        }
+                                                    })
+                                                    .catch(err => {
+                                                        console.error(err);
+                                                        list.innerHTML = '<p>Network error.</p>';
+                                                    });
+                                            }
 
-            function renderExperimentsList(experiments, empId) {
-                const list = document.getElementById('mc-experiments-list');
-                if (!experiments || experiments.length === 0) {
-                    list.innerHTML = '<p>No experiments generated yet.</p>';
-                    return;
-                }
+                                            function renderExperimentsList(experiments, empId) {
+                                                const list = document.getElementById('mc-experiments-list');
+                                                if (!experiments || experiments.length === 0) {
+                                                    list.innerHTML = '<p>No experiments generated yet.</p>';
+                                                    return;
+                                                }
 
-                let html = '<div class="mc-exp-list">';
-                experiments.forEach(exp => {
-                    const isShared = exp.status === 'assigned';
-                    const statusLabel = isShared ? '<span class="mc-badge success">Shared</span>' : '<span class="mc-badge warning">Draft</span>';
-                    const toggleLabel = isShared ? 'Unshare' : 'Share';
-                    const toggleAction = isShared ? 'draft' : 'assigned';
+                                                let html = '<div class="mc-exp-list">';
+                                                experiments.forEach(exp => {
+                                                    const isShared = exp.status === 'assigned';
+                                                    const statusLabel = isShared ? '<span class="mc-badge success">Shared</span>' : '<span class="mc-badge warning">Draft</span>';
+                                                    const toggleLabel = isShared ? 'Unshare' : 'Share';
+                                                    const toggleAction = isShared ? 'draft' : 'assigned';
 
-                    html += `
+                                                    html += `
                         <div class="mc-exp-item" style="border:1px solid #eee; padding:10px; margin-bottom:10px; border-radius:4px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                                 <strong style="font-size:1.1em;">${exp.title}</strong>
@@ -1976,73 +2052,73 @@ class MC_Employer_Dashboard
                             </div>
                         </div>
                     `;
-                });
-                html += '</div>';
-                list.innerHTML = html;
-            }
+                                                });
+                                                html += '</div>';
+                                                list.innerHTML = html;
+                                            }
 
-            function toggleExperimentStatus(hash, newStatus, empId, btn) {
-                const originalText = btn.innerText;
-                btn.innerText = '...';
-                btn.disabled = true;
+                                            function toggleExperimentStatus(hash, newStatus, empId, btn) {
+                                                const originalText = btn.innerText;
+                                                btn.innerText = '...';
+                                                btn.disabled = true;
 
-                const data = new URLSearchParams();
-                data.append('action', 'mc_employer_update_experiment_status');
-                data.append('employee_id', empId);
-                data.append('hash', hash);
-                data.append('status', newStatus);
+                                                const data = new URLSearchParams();
+                                                data.append('action', 'mc_employer_update_experiment_status');
+                                                data.append('employee_id', empId);
+                                                data.append('hash', hash);
+                                                data.append('status', newStatus);
 
-                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
-                    method: 'POST',
-                    body: data
-                })
-                    .then(res => res.json())
-                    .then(res => {
-                        if (res.success) {
-                            loadExperiments(empId); // Reload list
-                        } else {
-                            alert('Error: ' + res.data.message);
-                            btn.innerText = originalText;
-                            btn.disabled = false;
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        alert('Network error');
-                        btn.innerText = originalText;
-                        btn.disabled = false;
-                    });
-            }
-        </script>
-        <!-- Context Configuration Modal -->
-        <div id="mc-context-modal" class="mc-modal">
-            <div class="mc-modal-content">
-                <span class="mc-close" onclick="closeContextModal()">&times;</span>
-                <h3>Configure Experiment Context</h3>
-                <p style="color:#666; font-size:0.9em; margin-bottom:15px;">
-                    To generate high-quality experiments, the AI needs to understand the employee's role and your workplace
-                    environment.
-                </p>
+                                                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                                                    method: 'POST',
+                                                    body: data
+                                                })
+                                                    .then(res => res.json())
+                                                    .then(res => {
+                                                        if (res.success) {
+                                                            loadExperiments(empId); // Reload list
+                                                        } else {
+                                                            alert('Error: ' + res.data.message);
+                                                            btn.innerText = originalText;
+                                                            btn.disabled = false;
+                                                        }
+                                                    })
+                                                    .catch(err => {
+                                                        console.error(err);
+                                                        alert('Network error');
+                                                        btn.innerText = originalText;
+                                                        btn.disabled = false;
+                                                    });
+                                            }
+                                        </script>
+                                        <!-- Context Configuration Modal -->
+                                        <div id="mc-context-modal" class="mc-modal">
+                                            <div class="mc-modal-content">
+                                                <span class="mc-close" onclick="closeContextModal()">&times;</span>
+                                                <h3>Configure Experiment Context</h3>
+                                                <p style="color:#666; font-size:0.9em; margin-bottom:15px;">
+                                                    To generate high-quality experiments, the AI needs to understand the employee's role and your workplace
+                                                    environment.
+                                                </p>
 
-                <div class="mc-form-group">
-                    <label for="mc-context-role">Employee Role Context</label>
-                    <textarea id="mc-context-role" rows="3"
-                        placeholder="e.g. Senior Developer responsible for backend architecture and mentoring juniors."></textarea>
-                </div>
+                                                <div class="mc-form-group">
+                                                    <label for="mc-context-role">Employee Role Context</label>
+                                                    <textarea id="mc-context-role" rows="3"
+                                                        placeholder="e.g. Senior Developer responsible for backend architecture and mentoring juniors."></textarea>
+                                                </div>
 
-                <div class="mc-form-group">
-                    <label for="mc-context-workplace">Workplace Context (Company Settings)</label>
-                    <textarea id="mc-context-workplace" rows="3"
-                        placeholder="e.g. Fast-paced startup culture, remote-first, values autonomy and rapid iteration."></textarea>
-                </div>
+                                                <div class="mc-form-group">
+                                                    <label for="mc-context-workplace">Workplace Context (Company Settings)</label>
+                                                    <textarea id="mc-context-workplace" rows="3"
+                                                        placeholder="e.g. Fast-paced startup culture, remote-first, values autonomy and rapid iteration."></textarea>
+                                                </div>
 
-                <div style="text-align:right; margin-top:20px;">
-                    <button class="mc-button secondary" onclick="closeContextModal()">Cancel</button>
-                    <button id="mc-context-confirm-btn" class="mc-button primary">Confirm & Generate</button>
-                </div>
-            </div>
-        </div>
-        <?php
-        return ob_get_clean();
+                                                <div style="text-align:right; margin-top:20px;">
+                                                    <button class="mc-button secondary" onclick="closeContextModal()">Cancel</button>
+                                                    <button id="mc-context-confirm-btn" class="mc-button primary">Confirm & Generate</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php
+                                        return ob_get_clean();
     }
 }

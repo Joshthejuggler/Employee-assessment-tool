@@ -272,7 +272,7 @@ add_filter('elementor/widget/render_content', 'mc_force_render_quiz_shortcodes_i
  */
 function mc_enqueue_landing_page_styles()
 {
-    wp_enqueue_style('mc-landing-pages', plugins_url('assets/landing-pages.css', __FILE__), [], '1.0.2');
+    wp_enqueue_style('mc-landing-pages', plugins_url('assets/landing-pages.css', __FILE__), [], '1.0.3');
 
     // Enqueue employer dashboard styles on dashboard page
     if (is_page() && has_shortcode(get_post()->post_content, 'mc_employer_dashboard')) {

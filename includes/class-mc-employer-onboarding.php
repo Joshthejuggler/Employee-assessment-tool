@@ -63,8 +63,9 @@ class MC_Employer_Onboarding
                 <div class="mc-step-badge">Step 1 of 2</div>
             </div>
             <h2>Setup Your Company</h2>
-            <p class="mc-step-description">Enter your company name and logo to personalize the experience for your employees.</p>
-            
+            <p class="mc-step-description">Enter your company name and logo to personalize the experience for your employees.
+            </p>
+
             <form method="post" action="" enctype="multipart/form-data" class="mc-onboarding-form">
                 <?php wp_nonce_field('mc_onboarding_step_1', 'mc_onboarding_nonce'); ?>
                 <input type="hidden" name="mc_onboarding_step" value="1">
@@ -84,7 +85,8 @@ class MC_Employer_Onboarding
                         </div>
                     <?php endif; ?>
                     <div class="mc-file-input-wrapper">
-                        <input type="file" id="company_logo" name="company_logo" accept="image/png,image/jpeg,image/jpg" class="mc-file-input">
+                        <input type="file" id="company_logo" name="company_logo" accept="image/png,image/jpeg,image/jpg"
+                            class="mc-file-input">
                         <label for="company_logo" class="mc-file-label">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -122,7 +124,7 @@ class MC_Employer_Onboarding
             </div>
             <h2>Invite Your Team</h2>
             <p class="mc-step-description">Send assessment invitations to your employees. You'll be able to:</p>
-            
+
             <div class="mc-benefits-grid">
                 <div class="mc-benefit-card">
                     <div class="mc-benefit-icon">
@@ -161,20 +163,36 @@ class MC_Employer_Onboarding
 
                 <div class="mc-form-group">
                     <label>Employee Details</label>
-                    <p class="mc-input-helper">Enter the name and email for each employee you'd like to invite. At least one is required.</p>
+                    <p class="mc-input-helper">Enter the name and email for each employee you'd like to invite. At least one is
+                        required.</p>
 
                     <div id="mc-invite-rows" class="mc-invite-container">
-                        <div class="mc-invite-row">
-                            <input type="text" name="employees[0][name]" placeholder="Full Name" class="mc-input" required>
-                            <input type="email" name="employees[0][email]" placeholder="email@company.com" class="mc-input" required>
+                        <div class="mc-invite-group">
+                            <h4 class="mc-invite-group-title">Employee 1</h4>
+                            <div class="mc-invite-row">
+                                <input type="text" name="employees[0][name]" placeholder="Full Name" class="mc-input" required>
+                                <input type="email" name="employees[0][email]" placeholder="email@company.com" class="mc-input" required>
+                                <input type="text" name="employees[0][role]" placeholder="Role Title" class="mc-input" required>
+                                <textarea name="employees[0][responsibilities]" placeholder="Key Responsibilities" class="mc-input" rows="1" required></textarea>
+                            </div>
                         </div>
-                        <div class="mc-invite-row">
-                            <input type="text" name="employees[1][name]" placeholder="Full Name" class="mc-input">
-                            <input type="email" name="employees[1][email]" placeholder="email@company.com" class="mc-input">
+                        <div class="mc-invite-group">
+                            <h4 class="mc-invite-group-title">Employee 2</h4>
+                            <div class="mc-invite-row">
+                                <input type="text" name="employees[1][name]" placeholder="Full Name" class="mc-input">
+                                <input type="email" name="employees[1][email]" placeholder="email@company.com" class="mc-input">
+                                <input type="text" name="employees[1][role]" placeholder="Role Title" class="mc-input">
+                                <textarea name="employees[1][responsibilities]" placeholder="Key Responsibilities" class="mc-input" rows="1"></textarea>
+                            </div>
                         </div>
-                        <div class="mc-invite-row">
-                            <input type="text" name="employees[2][name]" placeholder="Full Name" class="mc-input">
-                            <input type="email" name="employees[2][email]" placeholder="email@company.com" class="mc-input">
+                        <div class="mc-invite-group">
+                            <h4 class="mc-invite-group-title">Employee 3</h4>
+                            <div class="mc-invite-row">
+                                <input type="text" name="employees[2][name]" placeholder="Full Name" class="mc-input">
+                                <input type="email" name="employees[2][email]" placeholder="email@company.com" class="mc-input">
+                                <input type="text" name="employees[2][role]" placeholder="Role Title" class="mc-input">
+                                <textarea name="employees[2][responsibilities]" placeholder="Key Responsibilities" class="mc-input" rows="1"></textarea>
+                            </div>
                         </div>
                     </div>
 
@@ -209,19 +227,24 @@ class MC_Employer_Onboarding
                 document.getElementById('mc-add-row-btn').addEventListener('click', function () {
                     const container = document.getElementById('mc-invite-rows');
                     const index = container.children.length;
-                    const row = document.createElement('div');
-                    row.className = 'mc-invite-row';
-                    row.innerHTML = `
-                        <input type="text" name="employees[${index}][name]" placeholder="Full Name" class="mc-input">
-                        <input type="email" name="employees[${index}][email]" placeholder="email@company.com" class="mc-input">
+                    const group = document.createElement('div');
+                    group.className = 'mc-invite-group';
+                    group.innerHTML = `
+                        <h4 class="mc-invite-group-title">Employee ${index + 1}</h4>
+                        <div class="mc-invite-row">
+                            <input type="text" name="employees[${index}][name]" placeholder="Full Name" class="mc-input">
+                            <input type="email" name="employees[${index}][email]" placeholder="email@company.com" class="mc-input">
+                            <input type="text" name="employees[${index}][role]" placeholder="Role Title" class="mc-input">
+                            <textarea name="employees[${index}][responsibilities]" placeholder="Key Responsibilities" class="mc-input" rows="1"></textarea>
+                        </div>
                     `;
-                    container.appendChild(row);
+                    container.appendChild(group);
                 });
 
                 // File input display
                 const fileInput = document.getElementById('company_logo');
                 if (fileInput) {
-                    fileInput.addEventListener('change', function(e) {
+                    fileInput.addEventListener('change', function (e) {
                         const fileName = e.target.files[0]?.name;
                         const label = document.querySelector('.mc-file-text');
                         if (fileName && label) {
@@ -270,7 +293,8 @@ class MC_Employer_Onboarding
                 </div>
             </div>
             <div class="mc-success-actions">
-                <a href="<?php echo esc_url(MC_Funnel::find_page_by_shortcode('mc_employer_dashboard')); ?>" class="mc-button mc-button-primary mc-button-large">
+                <a href="<?php echo esc_url(MC_Funnel::find_page_by_shortcode('mc_employer_dashboard')); ?>"
+                    class="mc-button mc-button-primary mc-button-large">
                     Go to Dashboard
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="9 18 15 12 9 6"></polyline>
@@ -325,11 +349,15 @@ class MC_Employer_Onboarding
                 foreach ($_POST['employees'] as $employee) {
                     $email = sanitize_email($employee['email']);
                     $name = sanitize_text_field($employee['name']);
+                    $role = sanitize_text_field($employee['role'] ?? '');
+                    $responsibilities = sanitize_textarea_field($employee['responsibilities'] ?? '');
 
                     if (is_email($email)) {
                         $invited_employees[] = [
                             'email' => $email,
-                            'name' => $name
+                            'name' => $name,
+                            'role' => $role,
+                            'responsibilities' => $responsibilities
                         ];
                         $emails_to_invite[] = [
                             'email' => $email,
@@ -455,6 +483,10 @@ class MC_Employer_Onboarding
                 }
 
                 wp_redirect(add_query_arg('step', 3));
+                
+                // Set employer status to active
+                update_user_meta($user_id, 'mc_employer_status', 'active');
+                
                 exit;
             }
         }
