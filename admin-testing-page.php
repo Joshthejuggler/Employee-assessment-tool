@@ -284,16 +284,12 @@ function mc_render_admin_testing_page()
                                     $company = '-';
                                 }
                             }
-                            $switch_url = '';
-                            if (function_exists('user_switching_get_switch_url')) {
-                                $switch_url = user_switching_get_switch_url($user);
-                            }
-                            if (empty($switch_url)) {
+                            // Use MC_User_Switcher for switch URL
+                            if (class_exists('MC_User_Switcher')) {
+                                $switch_url = MC_User_Switcher::get_switch_url($user->ID);
+                            } else {
                                 $switch_url = add_query_arg(['action' => 'mc_switch_user', 'user_id' => $user->ID, '_wpnonce' => wp_create_nonce('mc_switch_user_' . $user->ID)], admin_url('admin.php?page=admin-testing-page'));
                             }
-                            $analysis = get_user_meta($user->ID, 'mc_assessment_analysis', true);
-                            $strain_results = get_user_meta($user->ID, 'strain_index_results', true);
-                            $has_analysis = !empty($analysis) || !empty($strain_results);
                         ?>
                             <tr>
                                 <td><?php echo esc_html($user->user_email); ?></td>
@@ -302,8 +298,14 @@ function mc_render_admin_testing_page()
                                 <td><?php echo esc_html($company); ?></td>
                                 <td><?php echo esc_html(human_time_diff(strtotime($user->user_registered), current_time('timestamp')) . ' ago'); ?></td>
                                 <td>
-                                    <a href="<?php echo esc_url($switch_url); ?>" class="button button-small" title="Switch To User">🔄 Switch</a>
-                                    <a href="#" class="button button-small" onclick="deleteTestUser(<?php echo esc_js($user->ID); ?>, '<?php echo esc_js($user->user_email); ?>'); return false;">🗑️</a>
+                                    <div class="mc-row-actions">
+                                        <a href="<?php echo esc_url($switch_url); ?>" class="mc-action-btn mc-btn-switch" title="Switch To User">
+                                            <span class="dashicons dashicons-migrate"></span>
+                                        </a>
+                                        <a href="#" class="mc-action-btn mc-btn-delete" onclick="deleteTestUser(<?php echo esc_js($user->ID); ?>, '<?php echo esc_js($user->user_email); ?>'); return false;" title="Delete User">
+                                            <span class="dashicons dashicons-trash"></span>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -335,6 +337,52 @@ function mc_render_admin_testing_page()
         .compact-form input, .compact-form select { width: 100%; font-size: 13px; }
         .card .submit { margin: 12px 0 0; padding: 0; }
         .card .button { font-size: 12px; height: 28px; line-height: 26px; padding: 0 10px; margin-right: 5px; }
+        
+        /* Action buttons - matching Super Admin dashboard style */
+        .mc-row-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .mc-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: 1px solid #c3c4c7;
+            border-radius: 4px;
+            background: #f6f7f7;
+            color: #50575e;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .mc-action-btn:hover {
+            background: #f0f0f1;
+            border-color: #8c8f94;
+            color: #1d2327;
+        }
+        .mc-action-btn .dashicons {
+            font-size: 16px;
+            width: 16px;
+            height: 16px;
+        }
+        .mc-btn-switch {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border-color: #1d4ed8;
+            color: #fff;
+        }
+        .mc-btn-switch:hover {
+            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+            border-color: #1e40af;
+            color: #fff;
+        }
+        .mc-btn-delete:hover {
+            background: #dc2626;
+            border-color: #dc2626;
+            color: #fff;
+        }
     </style>
 
     <script>

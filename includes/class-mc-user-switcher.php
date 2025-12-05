@@ -10,6 +10,7 @@ if (!defined('ABSPATH'))
 class MC_User_Switcher
 {
     const COOKIE_NAME = 'mc_switched_from';
+    const COOKIE_ORIGIN_URL = 'mc_switch_origin_url';
     const COOKIE_EXPIRATION = DAY_IN_SECONDS;
     const ACTION_SWITCH = 'mc_switch_user';
     const ACTION_SWITCH_BACK = 'mc_switch_back';
@@ -83,6 +84,22 @@ class MC_User_Switcher
             true
         );
 
+        // Store the origin URL (where the admin is switching FROM)
+        $origin_url = wp_get_referer();
+        if (!$origin_url) {
+            // Fallback to current request URL without the switch action params
+            $origin_url = admin_url('admin.php?page=mc-super-admin');
+        }
+        setcookie(
+            self::COOKIE_ORIGIN_URL,
+            $origin_url,
+            time() + self::COOKIE_EXPIRATION,
+            COOKIEPATH,
+            COOKIE_DOMAIN,
+            is_ssl(),
+            true
+        );
+
         // Switch to the target user
         wp_clear_auth_cookie();
         wp_set_auth_cookie($user_id, false);
@@ -119,9 +136,21 @@ class MC_User_Switcher
             wp_die('Invalid original user.');
         }
 
-        // Clear the switch cookie
+        // Get the origin URL before clearing cookies
+        $origin_url = isset($_COOKIE[self::COOKIE_ORIGIN_URL]) ? $_COOKIE[self::COOKIE_ORIGIN_URL] : '';
+
+        // Clear the switch cookies
         setcookie(
             self::COOKIE_NAME,
+            '',
+            time() - 3600,
+            COOKIEPATH,
+            COOKIE_DOMAIN,
+            is_ssl(),
+            true
+        );
+        setcookie(
+            self::COOKIE_ORIGIN_URL,
             '',
             time() - 3600,
             COOKIEPATH,
@@ -135,8 +164,13 @@ class MC_User_Switcher
         wp_set_auth_cookie($original_admin_id, false);
         wp_set_current_user($original_admin_id);
 
-        // Redirect to Super Admin Dashboard
-        $redirect_url = admin_url('admin.php?page=mc-super-admin');
+        // Redirect to origin URL if valid, otherwise Super Admin Dashboard
+        if (!empty($origin_url) && wp_validate_redirect($origin_url, false)) {
+            $redirect_url = $origin_url;
+        } else {
+            $redirect_url = admin_url('admin.php?page=mc-super-admin');
+        }
+
         wp_safe_redirect($redirect_url);
         exit;
     }
