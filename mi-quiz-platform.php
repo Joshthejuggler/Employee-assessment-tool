@@ -75,6 +75,9 @@ if (!class_exists('MC_Strain_Index_Scorer')) {
 if (!class_exists('MC_Magic_Login')) {
     require_once MC_QUIZ_PLATFORM_PATH . 'includes/class-mc-magic-login.php';
 }
+if (!class_exists('MC_User_Switcher')) {
+    require_once MC_QUIZ_PLATFORM_PATH . 'includes/class-mc-user-switcher.php';
+}
 
 // Include all the necessary class files.
 // These files should ONLY define classes, not run any code themselves.

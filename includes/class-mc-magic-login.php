@@ -54,11 +54,19 @@ class MC_Magic_Login
         delete_user_meta($user->ID, 'mc_magic_login_expires');
 
         // Redirect to onboarding or dashboard
-        $redirect_url = home_url('/employer-onboarding/');
-        if (class_exists('MC_Funnel')) {
-            $page = MC_Funnel::find_page_by_shortcode('employer_onboarding');
-            if ($page) {
-                $redirect_url = get_permalink($page);
+        $redirect_url = home_url();
+
+        if (class_exists('MC_Login_Customizer')) {
+            $redirect_url = MC_Login_Customizer::get_redirect_url_for_user($user);
+        } else {
+            // Fallback if class not loaded
+            if (user_can($user, 'manage_options')) {
+                $redirect_url = admin_url('admin.php?page=mc-super-admin');
+            } elseif (class_exists('MC_Funnel')) {
+                $page = MC_Funnel::find_page_by_shortcode('employer_onboarding');
+                if ($page) {
+                    $redirect_url = get_permalink($page);
+                }
             }
         }
 

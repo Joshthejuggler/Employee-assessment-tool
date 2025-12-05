@@ -43,7 +43,7 @@ Thumbs.db
 *~
 
 # Temporary admin/testing files
-admin-testing-page.php
+
 admin-activate.php
 check_pages.php
 create-quiz-page.php

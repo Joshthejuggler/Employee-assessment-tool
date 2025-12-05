@@ -18,7 +18,7 @@ class MC_Login_Customizer
         add_action('login_message', [__CLASS__, 'custom_login_message']);
 
         // Custom login redirect logic
-        add_filter('login_redirect', [__CLASS__, 'custom_login_redirect'], 10, 3);
+        add_filter('login_redirect', [__CLASS__, 'custom_login_redirect'], 999, 3);
 
         // Auto-login registration hooks
         add_action('register_form', [__CLASS__, 'add_password_fields']);
@@ -49,32 +49,53 @@ class MC_Login_Customizer
     /**
      * Redirect users to their appropriate dashboard after login.
      */
+    /**
+     * Redirect users to their appropriate dashboard after login.
+     */
     public static function custom_login_redirect($redirect_to, $request, $user)
     {
+        // Ensure user object is valid
+        if (is_wp_error($user)) {
+            return $redirect_to;
+        }
+
         // If there is a specific redirect request (and it's not default admin), respect it.
         if (!empty($request) && strpos($request, 'wp-admin') === false && strpos($request, 'wp-login.php') === false) {
             return $request;
         }
 
+        return self::get_redirect_url_for_user($user);
+    }
+
+    /**
+     * Get the redirect URL based on user role.
+     * 
+     * @param WP_User $user The user object.
+     * @return string The redirect URL.
+     */
+    public static function get_redirect_url_for_user($user)
+    {
+        if (!($user instanceof WP_User)) {
+            return home_url();
+        }
+
+        // Check for Admin first - Force redirect to Super Admin Dashboard
+        if (isset($user->roles) && is_array($user->roles)) {
+            if (in_array('administrator', $user->roles) || $user->has_cap('manage_options')) {
+                return admin_url('admin.php?page=mc-super-admin');
+            }
+        }
+
         if (isset($user->roles) && is_array($user->roles)) {
             // Employers -> Employer Dashboard
             if (in_array(MC_Roles::ROLE_EMPLOYER, $user->roles)) {
-                $employer_dash = MC_Funnel::find_page_by_shortcode('mc_employer_dashboard');
-                if ($employer_dash) {
-                    return $employer_dash;
-                }
+                // Use hardcoded URL with fallback to shortcode lookup
+                return home_url('/employer-dashboard/');
             }
             // Employees -> Assessment Dashboard
             if (in_array(MC_Roles::ROLE_EMPLOYEE, $user->roles)) {
-                $employee_dash = MC_Funnel::find_page_by_shortcode('quiz_dashboard');
-                if ($employee_dash) {
-                    return $employee_dash;
-                }
-            }
-
-            // Admins -> Super Admin Dashboard
-            if (in_array('administrator', $user->roles)) {
-                return admin_url('admin.php?page=mc-super-admin');
+                // Use hardcoded URL with fallback to shortcode lookup
+                return home_url('/quiz-dashboard/');
             }
         }
 
