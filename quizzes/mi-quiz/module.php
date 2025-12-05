@@ -7,7 +7,7 @@ if (!defined('ABSPATH'))
 
 class MI_Quiz_Plugin_AI
 {
-    const VERSION = '9.9.2';
+    const VERSION = '9.9.7';
     const OPT_GROUP = 'miq_settings';
     const OPT_BCC = 'miq_bcc_emails';
     const OPT_ANTITHREAD = 'miq_antithread';
@@ -58,6 +58,11 @@ class MI_Quiz_Plugin_AI
 
         // Hook into WordPress user deletion to clean up our custom table.
         add_action('delete_user', [$this, 'handle_user_deletion']);
+
+        // Fix for User Switching plugin compatibility
+        // Force shortcode processing and clear caches when user switching is active
+        add_action('init', [$this, 'fix_user_switching_compatibility'], 99);
+        add_filter('the_content', [$this, 'force_shortcode_on_quiz_page'], 99);
     }
 
     /** Create/upgrade the subscribers table */
@@ -686,8 +691,7 @@ class MI_Quiz_Plugin_AI
                             </a>
                         <?php endif; ?>
                         <button type="button" id="mi-about-top" class="mi-quiz-button mi-quiz-button-secondary"
-                            onclick="return window._miAboutToggle ? window._miAboutToggle(event) : (function(e){ e&&e.preventDefault&&e.preventDefault(); var m=document.getElementById('mi-about-modal'), r=document.getElementById('mi-quiz-results'), c=document.getElementById('mi-quiz-container'); if(!m) return false; var show=(m.style.display==='none'||!m.style.display); if(show){ if(r){ m.dataset.prevRes=(r.style.display||''); r.style.display='none'; } if(c){ m.dataset.prevCont=(c.style.display||''); c.style.display='none'; } m.style.display='block'; } else { m.style.display='none'; if(r && ('prevRes' in m.dataset)) r.style.display=m.dataset.prevRes; if(c && ('prevCont' in m.dataset)) c.style.display=m.dataset.prevCont; } return false; })(event)">About
-                            - <?php echo __FILE__; ?></button>
+                            onclick="return window._miAboutToggle ? window._miAboutToggle(event) : (function(e){ e&&e.preventDefault&&e.preventDefault(); var m=document.getElementById('mi-about-modal'), r=document.getElementById('mi-quiz-results'), c=document.getElementById('mi-quiz-container'); if(!m) return false; var show=(m.style.display==='none'||!m.style.display); if(show){ if(r){ m.dataset.prevRes=(r.style.display||''); r.style.display='none'; } if(c){ m.dataset.prevCont=(c.style.display||''); c.style.display='none'; } m.style.display='block'; } else { m.style.display='none'; if(r && ('prevRes' in m.dataset)) r.style.display=m.dataset.prevRes; if(c && ('prevCont' in m.dataset)) c.style.display=m.dataset.prevCont; } return false; })(event)">About</button>
                     </div>
                 </div>
             <?php endif; ?>
@@ -1156,5 +1160,47 @@ class MI_Quiz_Plugin_AI
             // This can happen if meta didn't exist, which is not an error in this context.
             wp_send_json_success('No results found to delete, or they were already deleted.');
         }
+    }
+
+    /**
+     * Fix User Switching plugin compatibility
+     * Clear caches and force fresh page load when user switching is detected
+     */
+    public function fix_user_switching_compatibility()
+    {
+        // Check if user switching is active
+        if (function_exists('current_user_switched') && current_user_switched()) {
+            // Force WordPress to reprocess shortcodes by flushing object cache
+            wp_cache_flush();
+
+            // Remove any page caching that might interfere
+            if (function_exists('w3tc_flush_all')) {
+                w3tc_flush_all();
+            }
+        }
+    }
+
+    /**
+     * Force shortcode processing on MI quiz page during user switching
+     * Ensures the quiz shortcode is always processed even when switching users
+     */
+    public function force_shortcode_on_quiz_page($content)
+    {
+        // Only apply on the MI quiz page
+        if (is_page() && has_shortcode(get_post()->post_content, 'mi_quiz')) {
+            // If user switching is active, force shortcode processing
+            if (function_exists('current_user_switched') && current_user_switched()) {
+                // Remove any filters that might strip shortcodes
+                remove_filter('the_content', 'wpautop');
+
+                // Ensure shortcode is processed
+                $content = do_shortcode($content);
+
+                // Re-add wpautop after shortcode processing
+                add_filter('the_content', 'wpautop');
+            }
+        }
+
+        return $content;
     }
 }

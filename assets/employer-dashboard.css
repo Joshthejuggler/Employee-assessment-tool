@@ -1062,8 +1062,92 @@
     transform: rotate(90deg);
 }
 
+/* Modal Styles */
+.mc-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease-out;
+}
+
 .mc-modal-content {
+    background-color: #fefefe;
+    margin: 5vh auto;
+    padding: 40px;
+    border: 1px solid #e2e8f0;
+    width: 90%;
+    max-width: 600px;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     position: relative;
+    animation: slideIn 0.3s ease-out;
+    box-sizing: border-box;
+    /* Ensure padding is included in width */
+}
+
+.mc-modal-content * {
+    box-sizing: border-box;
+    /* Ensure all children respect box model */
+}
+
+.mc-modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 24px;
+    color: #0f172a;
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding-right: 40px;
+    /* Space for close button */
+}
+
+/* Ensure inputs in modal fit correctly */
+.mc-modal-content .mc-input,
+.mc-modal-content input[type="text"],
+.mc-modal-content textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    margin-bottom: 4px;
+}
+
+.mc-modal-content .mc-input:focus,
+.mc-modal-content input[type="text"]:focus,
+.mc-modal-content textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 /* New Report Hero Styles */

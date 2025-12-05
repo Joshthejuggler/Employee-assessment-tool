@@ -20,6 +20,13 @@ class MC_Super_Admin
             add_action('wp_ajax_mc_send_employer_invite', [$this, 'ajax_send_employer_invite']);
             add_action('wp_ajax_delete_test_user', [$this, 'ajax_delete_test_user']);
         }
+
+        // Handle user switch requests
+        add_action('init', [$this, 'handle_user_switch']);
+        add_action('init', [$this, 'handle_switch_back']);
+
+        // Add "Switch Back to Admin" button to admin bar
+        add_action('admin_bar_menu', [$this, 'add_switch_back_button'], 999);
     }
 
     /**
@@ -302,12 +309,18 @@ class MC_Super_Admin
                                         </td>
                                         <td>
                                             <div class="mc-row-actions">
-                                                <?php if (function_exists('user_switching_get_switch_url')): ?>
-                                                    <a href="<?php echo esc_url(user_switching_get_switch_url($employer)); ?>"
-                                                        class="mc-action-btn mc-btn-switch" title="Run As User">
-                                                        <span class="dashicons dashicons-migrate"></span>
-                                                    </a>
-                                                <?php endif; ?>
+                                                <?php
+                                                // Generate custom switch URL
+                                                $switch_url = add_query_arg(array(
+                                                    'action' => 'switch_to_user',
+                                                    'user_id' => $employer->ID,
+                                                    '_wpnonce' => wp_create_nonce('switch_to_user_' . $employer->ID)
+                                                ), admin_url());
+                                                ?>
+                                                <a href="<?php echo esc_url($switch_url); ?>" class="mc-action-btn mc-btn-switch"
+                                                    title="Run As User">
+                                                    <span class="dashicons dashicons-migrate"></span>
+                                                </a>
                                                 <button type="button" class="mc-action-btn mc-btn-view"
                                                     data-employer-id="<?php echo esc_attr($employer->ID); ?>" title="View Details">
                                                     <span class="dashicons dashicons-visibility"></span>
@@ -320,26 +333,7 @@ class MC_Super_Admin
                                                 </button>
                                                 <button type="button" class="mc-action-btn mc-btn-edit"
                                                     data-employer-id="<?php echo esc_attr($employer->ID); ?>" title="Edit">
-                                                    <span class="dashicons dashicons-edit"></span>
-                                                </button>
-                                                <?php
-                                                $switch_url = false;
-                                                if (function_exists('user_switching_get_switch_url')) {
-                                                    $switch_url = user_switching_get_switch_url($employer);
-                                                } else {
-                                                    $switch_url = add_query_arg(array(
-                                                        'action' => 'switch_to_user',
-                                                        'user_id' => $employer->ID,
-                                                        '_wpnonce' => wp_create_nonce('switch_to_user_' . $employer->ID)
-                                                    ), admin_url('users.php'));
-                                                }
-
-                                                if ($switch_url): ?>
-                                                    <a href="<?php echo esc_url($switch_url); ?>" class="mc-action-btn mc-btn-switch"
-                                                        title="Run As User">
-                                                        <span class="dashicons dashicons-migrate"></span>
-                                                    </a>
-                                                <?php endif; ?>
+                                                    <span class="dashicons dashicons-edit"></span></button>
                                                 <button type="button" class="mc-action-btn mc-btn-delete"
                                                     data-employer-id="<?php echo esc_attr($employer->ID); ?>" title="Delete">
                                                     <span class="dashicons dashicons-trash"></span>
@@ -384,7 +378,7 @@ class MC_Super_Admin
                                                                     'action' => 'switch_to_user',
                                                                     'user_id' => $employee->ID,
                                                                     '_wpnonce' => wp_create_nonce('switch_to_user_' . $employee->ID)
-                                                                ), admin_url('users.php'));
+                                                                ), admin_url());
                                                                 ?>
                                                                 <a href="<?php echo esc_url($switch_url); ?>"
                                                                     class="mc-action-btn mc-btn-switch" title="Run As User">
@@ -920,5 +914,149 @@ class MC_Super_Admin
         }
 
         wp_send_json_success(['message' => 'User deleted successfully']);
+    }
+
+
+    /**
+     * Handle user switching via custom action
+     */
+    public function handle_user_switch()
+    {
+        if (!isset($_GET['action']) || $_GET['action'] !== 'switch_to_user') {
+            return;
+        }
+
+        if (!isset($_GET['user_id']) || !isset($_GET['_wpnonce'])) {
+            return;
+        }
+
+        $user_id = intval($_GET['user_id']);
+        $nonce = $_GET['_wpnonce'];
+
+        // Verify nonce
+        if (!wp_verify_nonce($nonce, 'switch_to_user_' . $user_id)) {
+            wp_die('Invalid nonce');
+        }
+
+        // Check if current user is admin
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+
+        // Get the target user
+        $user = get_userdata($user_id);
+        if (!$user) {
+            wp_die('User not found');
+        }
+
+        // Store the original user ID in session for switching back
+        $original_user_id = get_current_user_id();
+        set_transient('mc_switched_from_' . $user_id, $original_user_id, 3600); // 1 hour
+
+        // Clean session and log out current user
+        wp_logout();
+
+        // Log in as the target user
+        wp_set_current_user($user_id);
+        wp_set_auth_cookie($user_id);
+        do_action('wp_login', $user->user_login, $user);
+
+        // Determine redirect based on user role
+        $redirect_url = home_url();
+        if (in_array(MC_Roles::ROLE_EMPLOYER, $user->roles)) {
+            // Redirect employers to employer dashboard
+            $redirect_url = home_url('/employer-dashboard/');
+        } elseif (in_array(MC_Roles::ROLE_EMPLOYEE, $user->roles)) {
+            // Redirect employees to quiz dashboard
+            $redirect_url = home_url('/quiz-dashboard/');
+        }
+
+        wp_safe_redirect($redirect_url);
+        exit;
+    }
+
+    /**
+     * Add "Switch Back to Admin" button to admin bar
+     */
+    public function add_switch_back_button($wp_admin_bar)
+    {
+        $current_user_id = get_current_user_id();
+        $original_user_id = get_transient('mc_switched_from_' . $current_user_id);
+
+        // Only show if we have a stored original user (meaning we're in a switched session)
+        if (!$original_user_id) {
+            return;
+        }
+
+        // Get original user info
+        $original_user = get_userdata($original_user_id);
+        if (!$original_user) {
+            return;
+        }
+
+        // Create switch back URL
+        $switch_back_url = add_query_arg(array(
+            'action' => 'switch_back',
+            '_wpnonce' => wp_create_nonce('switch_back_' . $current_user_id)
+        ), admin_url());
+
+        // Add button to admin bar
+        $wp_admin_bar->add_node(array(
+            'id' => 'mc-switch-back',
+            'title' => '<span class="ab-icon dashicons dashicons-undo"></span> Switch Back to ' . esc_html($original_user->display_name),
+            'href' => esc_url($switch_back_url),
+            'meta' => array(
+                'class' => 'mc-switch-back-btn'
+            )
+        ));
+    }
+
+    /**
+     * Handle switching back to original admin user  
+     */
+    public function handle_switch_back()
+    {
+        if (!isset($_GET['action']) || $_GET['action'] !== 'switch_back') {
+            return;
+        }
+
+        if (!isset($_GET['_wpnonce'])) {
+            return;
+        }
+
+        $current_user_id = get_current_user_id();
+        $nonce = $_GET['_wpnonce'];
+
+        // Verify nonce
+        if (!wp_verify_nonce($nonce, 'switch_back_' . $current_user_id)) {
+            wp_die('Invalid nonce');
+        }
+
+        // Get the original user ID
+        $original_user_id = get_transient('mc_switched_from_' . $current_user_id);
+        if (!$original_user_id) {
+            wp_die('No switch session found');
+        }
+
+        // Get the original user
+        $original_user = get_userdata($original_user_id);
+        if (!$original_user) {
+            wp_die('Original user not found');
+        }
+
+        // Clean up the transient
+        delete_transient('mc_switched_from_' . $current_user_id);
+
+        // Log out current user
+        wp_logout();
+
+        // Log back in as original admin
+        wp_set_current_user($original_user_id);
+        wp_set_auth_cookie($original_user_id);
+        do_action('wp_login', $original_user->user_login, $original_user);
+
+        // Redirect to super admin page
+        wp_safe_redirect(admin_url('admin.php?page=mc-super-admin'));
+        exit;
     }
 }

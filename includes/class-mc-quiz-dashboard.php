@@ -73,6 +73,15 @@ class MC_Quiz_Dashboard
                 <div class="mc-nav">
                     <span class="mc-user-greeting">Hello, <?php echo esc_html($user_info->display_name); ?></span>
                     <?php
+                    // Show "Go to Employer Dashboard" button for employers
+                    $is_employer_check = !empty(get_user_meta($user_id, 'mc_invited_employees', true))
+                        || !empty(get_user_meta($user_id, 'mc_company_share_code', true));
+                    if ($is_employer_check) {
+                        $employer_dashboard_url = MC_Funnel::find_page_by_shortcode('mc_employer_dashboard');
+                        if ($employer_dashboard_url) {
+                            echo '<a href="' . esc_url($employer_dashboard_url) . '" style="margin-right: 15px; font-weight: 500;">Go to Employer Dashboard</a>';
+                        }
+                    }
                     if (function_exists('current_user_switched') && current_user_switched()) {
                         $switch_back_url = false;
                         if (function_exists('user_switching_get_switch_back_url')) {
@@ -104,31 +113,43 @@ class MC_Quiz_Dashboard
             <div class="mc-dashboard-container">
                 <?php echo $invite_message; ?>
 
-                <div class="mc-team-status-bar">
-                    <?php if ($linked_employer_id): ?>
-                        <div class="mc-team-connected">
-                            <?php
-                            $employer_logo_id = get_user_meta($linked_employer_id, 'mc_company_logo_id', true);
-                            $employer_logo_url = $employer_logo_id ? wp_get_attachment_url($employer_logo_id) : '';
-                            if ($employer_logo_url):
-                                ?>
-                                <img src="<?php echo esc_url($employer_logo_url); ?>"
-                                    alt="<?php echo esc_attr($linked_employer_name); ?> Logo" class="mc-team-logo-small">
-                            <?php endif; ?>
-                            <span class="mc-team-text">Linked to
-                                <strong><?php echo esc_html($linked_employer_name); ?></strong></span>
-                            <span class="mc-team-badge success">✓ Connected</span>
-                        </div>
-                    <?php else: ?>
-                        <div class="mc-team-invite">
-                            <span class="mc-team-text">Have a company invite code?</span>
-                            <form method="post" class="mc-invite-form-inline">
-                                <input type="text" name="mc_invite_code" placeholder="Enter Code (e.g. TEAM-123)" required>
-                                <button type="submit" class="mc-button small">Join Team</button>
-                            </form>
-                        </div>
-                    <?php endif; ?>
-                </div>
+
+                <?php
+                // Check if user is an employer
+                $is_employer = !empty(get_user_meta($user_id, 'mc_invited_employees', true))
+                    || !empty(get_user_meta($user_id, 'mc_company_share_code', true));
+
+                // Only show the team status bar if:
+                // 1. They're linked to an employer, OR
+                // 2. They're NOT an employer (i.e., they're an employee who might need to join)
+                if ($linked_employer_id || !$is_employer):
+                    ?>
+                    <div class="mc-team-status-bar">
+                        <?php if ($linked_employer_id): ?>
+                            <div class="mc-team-connected">
+                                <?php
+                                $employer_logo_id = get_user_meta($linked_employer_id, 'mc_company_logo_id', true);
+                                $employer_logo_url = $employer_logo_id ? wp_get_attachment_url($employer_logo_id) : '';
+                                if ($employer_logo_url):
+                                    ?>
+                                    <img src="<?php echo esc_url($employer_logo_url); ?>"
+                                        alt="<?php echo esc_attr($linked_employer_name); ?> Logo" class="mc-team-logo-small">
+                                <?php endif; ?>
+                                <span class="mc-team-text">Linked to
+                                    <strong><?php echo esc_html($linked_employer_name); ?></strong></span>
+                                <span class="mc-team-badge success">✓ Connected</span>
+                            </div>
+                        <?php else: ?>
+                            <div class="mc-team-invite">
+                                <span class="mc-team-text">Have a company invite code?</span>
+                                <form method="post" class="mc-invite-form-inline">
+                                    <input type="text" name="mc_invite_code" placeholder="Enter Code (e.g. TEAM-123)" required>
+                                    <button type="submit" class="mc-button small">Join Team</button>
+                                </form>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
 
                 <div class="mc-dashboard-header-row">
                     <div>
@@ -150,17 +171,7 @@ class MC_Quiz_Dashboard
                         require $bartle_questions_file;
                     }
                     ?>
-                    <?php
-                    // Check if user is an employer (has invited employees)
-                    $invited_employees = get_user_meta($user_id, 'mc_invited_employees', true);
-                    if (!empty($invited_employees)):
-                        $employer_dashboard_url = MC_Funnel::find_page_by_shortcode('mc_employer_dashboard');
-                        ?>
-                        <div class="mc-header-actions">
-                            <a href="<?php echo esc_url($employer_dashboard_url); ?>" class="mc-button outline">Go to Employer
-                                Dashboard</a>
-                        </div>
-                    <?php endif; ?>
+
                 </div>
 
                 <?php

@@ -340,12 +340,12 @@ class MC_Employer_Dashboard
                 <div class="mc-nav">
                     <span class="mc-user-greeting"><?php echo esc_html($company_name); ?></span>
                     <?php
-                    $employee_landing_url = '#';
+                    $employee_dashboard_url = '#';
                     if (class_exists('MC_Funnel')) {
-                        $employee_landing_url = MC_Funnel::find_page_by_shortcode('mc_employee_landing');
+                        $employee_dashboard_url = MC_Funnel::find_page_by_shortcode('quiz_dashboard');
                     }
-                    if ($employee_landing_url) {
-                        echo '<a href="' . esc_url($employee_landing_url) . '" style="margin-right: 15px; font-weight: 500;">Switch to Employee View</a>';
+                    if ($employee_dashboard_url) {
+                        echo '<a href="' . esc_url($employee_dashboard_url) . '" style="margin-right: 15px; font-weight: 500;">Switch to Employee View</a>';
                     }
 
                     if (function_exists('current_user_switched') && current_user_switched()) {

@@ -1,6 +1,5 @@
-console.log(">>> MI QUIZ FILE LOADED <<<");
 (function () {
-  console.log('MI Quiz JS loaded - Version 9.8.2');
+  console.log('MI Quiz JS loaded - Version 9.8.1');
   const { currentUser, ajaxUrl, ajaxNonce, loginUrl, data, cdtQuizUrl, ageGroup, ageNonce } = miq_quiz_data;
   const { cats: CATS, q1: Q1, q2: Q2, career: CAREER, lev: LEV, grow: GROW, skills: SKILLS, pairs: PAIRS, likert: LIKERT, cdtPrompts } = data;
   const isLoggedIn = !!currentUser;
@@ -112,117 +111,6 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
   }
   autoBtn && autoBtn.addEventListener('click', () => autoFill(form1, true));
 
-  // --- Comprehensive Auto-Fill Logic ---
-  const autoAvg = $id('mi-autofill-avg');
-  const autoNeg = $id('mi-autofill-neg');
-  const autoExc = $id('mi-autofill-exc');
-
-  function generateAndSaveAll(profile) {
-    if (!confirm(`Are you sure you want to overwrite ALL quiz results (MI, CDT, Bartle) with ${profile} data? This cannot be undone.`)) return;
-
-    const btn = profile === 'average' ? autoAvg : (profile === 'negative' ? autoNeg : autoExc);
-    const originalText = btn.textContent;
-    btn.textContent = 'Processing...';
-    btn.disabled = true;
-
-    // Score mappings (Avg=3, Neg=5 [High Strain], Exc=1 [Low Strain])
-    const baseScore = profile === 'average' ? 3 : (profile === 'negative' ? 5 : 1);
-
-    // Helper to get score based on question count
-    const getScore = (count) => count * baseScore;
-
-    // --- 1. MI Data Generation ---
-    const miScores = {};
-    // Fill standard categories with random valid scores (5-15)
-    Object.keys(CATS).forEach(k => miScores[k] = Math.floor(Math.random() * 10) + 5);
-
-    // Overwrite Strain Index categories
-    // MI: Rumination (4), Avoidance (3), Flood (3)
-    miScores['si-rumination'] = getScore(4);
-    miScores['si-avoidance'] = getScore(3);
-    miScores['si-emotional-flood'] = getScore(3);
-
-    const miResults = {
-      detailed: {}, // Simplified
-      top5: [],
-      bottom3: [],
-      top3: Object.keys(CATS).filter(k => !k.startsWith('si-')).slice(0, 3),
-      age: 'adult',
-      part1Scores: miScores
-    };
-
-    // --- 2. CDT Data Generation ---
-    const cdtScores = {
-      // CDT: Rumination (3), Avoidance (4), Flood (3)
-      'si-rumination': getScore(3),
-      'si-avoidance': getScore(4),
-      'si-emotional-flood': getScore(3),
-      // Dummy other scores
-      'binary': 15, 'absolute': 15, 'relative': 15
-    };
-    const cdtResults = {
-      scores: cdtScores,
-      sortedScores: [['binary', 15], ['absolute', 15], ['relative', 15]],
-      ageGroup: 'adult'
-    };
-
-    // --- 3. Bartle Data Generation ---
-    const bartleScores = {
-      // Bartle: Rumination (4), Avoidance (3), Flood (3)
-      'si-rumination': getScore(4),
-      'si-avoidance': getScore(3),
-      'si-emotional-flood': getScore(3),
-      // Dummy other scores
-      'achiever': 15, 'explorer': 15, 'socializer': 15, 'killer': 15
-    };
-    const bartleResults = {
-      scores: bartleScores,
-      sortedScores: [['achiever', 15], ['explorer', 15], ['socializer', 15], ['killer', 15]],
-      ageGroup: 'adult'
-    };
-
-    // --- Save All (Sequential to ensure completion check works) ---
-    fetch(ajaxUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ action: 'miq_save_user_results', _ajax_nonce: ajaxNonce, user_id: currentUser.id, results: JSON.stringify(miResults) })
-    })
-      .then(r => r.json())
-      .then(d1 => {
-        console.log('MI Saved:', d1);
-        return fetch(ajaxUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({ action: 'cdt_save_user_results', _ajax_nonce: ajaxNonce, user_id: currentUser.id, results: JSON.stringify(cdtResults) })
-        });
-      })
-      .then(r => r.json())
-      .then(d2 => {
-        console.log('CDT Saved:', d2);
-        return fetch(ajaxUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({ action: 'bartle_save_user_results', _ajax_nonce: ajaxNonce, user_id: currentUser.id, results: JSON.stringify(bartleResults) })
-        });
-      })
-      .then(r => r.json())
-      .then(d3 => {
-        console.log('Bartle Saved:', d3);
-        alert('All three quizzes have been completed with ' + profile + ' data! The page will now reload.');
-        window.location.reload();
-      })
-      .catch(err => {
-        console.error('Error saving quizzes:', err);
-        alert('An error occurred while saving results. Check console for details.');
-        btn.textContent = originalText;
-        btn.disabled = false;
-      });
-  }
-
-  if (autoAvg) autoAvg.addEventListener('click', () => generateAndSaveAll('average'));
-  if (autoNeg) autoNeg.addEventListener('click', () => generateAndSaveAll('negative'));
-  if (autoExc) autoExc.addEventListener('click', () => generateAndSaveAll('excellent'));
-
   // Use a predictable key for localStorage to hold results for a user who needs to log in.
   const PENDING_RESULTS_KEY = 'miq_pending_results';
   function storeQuizResults(results) {
@@ -311,29 +199,11 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
     try { const p = new URLSearchParams(window.location.search); return p.get('age'); } catch (e) { return null; }
   }
   function startPart1(initialAge) {
-    console.log('MI Quiz: startPart1 called');
-    age = 'adult';
+    age = initialAge || getUrlAge() || ((() => { try { return localStorage.getItem('mc_age_group'); } catch (e) { return null; } })()) || ageGroup || 'adult';
     try { localStorage.setItem('mc_age_group', age); } catch (e) { }
-
-    // Ensure container is visible and stage is hidden
-    const stage = $id('mi-stage');
-    const container = $id('mi-quiz-container');
-
-    console.log('MI Quiz: Toggling visibility in startPart1', { stage: stage ? 'found' : 'missing', container: container ? 'found' : 'missing' });
-
-    if (stage) stage.style.display = 'none';
-    if (container) {
-      container.style.display = 'block';
-      console.log('MI Quiz: Container display set to block');
-    }
-
     if (ageGate) ageGate.style.display = 'none';
     if (devTools) devTools.style.display = 'block';
-
-    if (form1) form1.style.display = 'block';
-    if (resultsDiv) resultsDiv.style.display = 'none';
-
-
+    form1.style.display = 'block';
 
     build(form1, part1Items(), steps => {
       const scores = {}; Object.keys(CATS).forEach(k => scores[k] = 0);
@@ -342,17 +212,12 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
         if (cat && v) scores[cat] = (scores[cat] || 0) + parseInt(v, 10);
       });
       part1Scores = scores;
-      top3 = Object.entries(scores)
-        .filter(([k]) => !k.startsWith('si-')) // Exclude Strain Index categories
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([k]) => k);
+      top3 = Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k);
       $id('mi-top3-list').innerHTML = top3.map(sl => `<li>${CATS[sl] || sl}</li>`).join('');
       form1.style.display = 'none'; devTools && (devTools.style.display = 'none'); inter.style.display = 'block';
     });
 
-    const sbtn = form1.querySelector('.mi-submit-final');
-    if (sbtn) { sbtn.id = 'mi-submit-part1'; sbtn.textContent = 'Submit Part 1'; }
+    const sbtn = form1.querySelector('.mi-submit-final'); if (sbtn) { sbtn.id = 'mi-submit-part1'; sbtn.textContent = 'Submit Part 1'; }
   }
 
   // Keep age buttons functional if present, but we no longer require them
@@ -375,10 +240,7 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
 
   const bar = (score, max = 15, slug = 'default') => {
     const pct = Math.max(0, Math.min(100, (score / max) * 100));
-    let slugClass = '';
-    if (slug) {
-      slugClass = 'bar-' + slug.replace('bodily-', '').split('-')[0];
-    }
+    const slugClass = slug ? `bar-${slug.replace('bodily-', '').split('-')[0]}` : '';
     return `<div class="bar-wrapper"><div class="bar-inner ${slugClass}" style="width:${pct}%;"></div></div>`;
   };
 
@@ -550,7 +412,7 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
     const summary = names.length >= 3 ? `Your detailed profile highlights a powerful combination of ${names[0]}, ${names[1]}, and ${names[2]}.` : 'Here is your detailed profile.';
 
     let top5Html = `<div class="mi-results-section bg-secondary">
-      <h2 class="mi-section-title">✅ Your Top 5 Strengths</h2>
+      <h2 class="mi-section-title">Your Top 5 Strengths</h2>
       <div class="mi-strengths-grid">`;
     top5.forEach(it => {
       const tips = (LEV?.[age]?.[it.slug]?.[it.name] || []);
@@ -565,7 +427,7 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
 
     // Generate amalgamated career/hobby suggestions
     let careerHtml = `<div class="mi-results-section">
-      <h2 class="mi-section-title">🚀 Potential Applications</h2>
+      <h2 class="mi-section-title">Potential Applications</h2>
       <div class="mi-career-grid">`;
     top3.forEach(sl => {
       const s = CAREER?.[age]?.[sl]; if (!s) return;
@@ -603,12 +465,12 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
         // Use existing skills as triad scenario
         const selectedSkills = getRandomStatements(potentialSkills, 2);
         scenariosHtml += `<div class="mi-results-section bg-secondary">
-          <h2 class="mi-section-title">✨ Your Unique Combination</h2>
+          <h2 class="mi-section-title">Your Unique Combination</h2>
           <p class="mi-scenarios-intro">Your powerful blend of ${names.join(', ')} creates unique possibilities:</p>
           <div class="mi-scenario-card triad-scenario">
             <h3 class="mi-scenario-title">Your Three-Way Strengths</h3>
             <div class="mi-scenario-statements">
-              ${selectedSkills.map(skill => `<p class="mi-scenario-statement">• ${skill}</p>`).join('')}
+              ${selectedSkills.map(skill => `<p class="mi-scenario-statement">${skill}</p>`).join('')}
             </div>
           </div>`;
         hasTriadContent = true;
@@ -659,7 +521,7 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
       if (pairScenarios.length > 0) {
         if (!hasTriadContent) {
           scenariosHtml += `<div class="mi-results-section bg-secondary">
-            <h2 class="mi-section-title">✨ Your Intelligence Combinations</h2>
+            <h2 class="mi-section-title">Your Intelligence Combinations</h2>
             <p class="mi-scenarios-intro">Your intelligence combinations create these special strengths:</p>`;
         } else {
           scenariosHtml += `<div class="mi-pair-scenarios">
@@ -673,7 +535,7 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
           scenariosHtml += `<div class="mi-scenario-card pair-scenario">
             <h4 class="mi-scenario-subtitle">${pairNames.join(' + ')}</h4>
             <div class="mi-scenario-statements">
-              ${pairStatements.map(statement => `<p class="mi-scenario-statement">• ${statement}</p>`).join('')}
+              ${pairStatements.map(statement => `<p class="mi-scenario-statement">${statement}</p>`).join('')}
             </div>
           </div>`;
         });
@@ -692,7 +554,7 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
       const potentialSkills = SKILLS?.[age]?.[skillsKey];
       if (potentialSkills && potentialSkills.length > 0) {
         scenariosHtml = `<div class="mi-results-section bg-secondary">
-          <h2 class="mi-section-title">✨ Your Unique Potential</h2>
+          <h2 class="mi-section-title">Your Unique Potential</h2>
           <p class="mi-skills-intro">Based on your unique combination of ${top3.map(sl => CATS[sl] || sl).join(', ')}, here are some things you might excel at:</p>
           <div class="mi-skills-grid">
             ${potentialSkills.map(skill => `<div class="mi-skill-card">${skill}</div>`).join('')}
@@ -703,7 +565,7 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
 
     // Simplified detailed results - no accordions
     let detailedHtml = `<div class="mi-results-section">
-      <h2 class="mi-section-title">📊 Your Detailed Intelligence Profile</h2>
+      <h2 class="mi-section-title">Your Detailed Intelligence Profile</h2>
       <p class="summary">${summary}</p>`;
     top3.forEach(sl => {
       const slugClass = sl.replace('bodily-', '').split('-')[0];
@@ -748,7 +610,7 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
     // --- Create and Append Buttons ---
 
     // Download PDF Button
-    const downloadBtn = createActionButton('⬇️ Download PDF', 'mi-quiz-button mi-quiz-button-primary', (e) => {
+    const downloadBtn = createActionButton('Download PDF', 'mi-quiz-button mi-quiz-button-primary', (e) => {
       const btn = e.currentTarget;
       btn.textContent = 'Generating...';
       btn.disabled = true;
@@ -784,7 +646,7 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
           alert('Sorry, there was an error generating the PDF.');
         })
         .finally(() => {
-          btn.textContent = '⬇️ Download PDF';
+          btn.textContent = 'Download PDF';
           btn.disabled = false;
         });
     });
@@ -796,7 +658,7 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
     // --- Add Logged-In User Buttons ---
     if (isLoggedIn) {
       // Retake Quiz Button
-      const retakeBtn = createActionButton('🔄 Retake Quiz', 'mi-quiz-button mi-quiz-button-secondary', () => {
+      const retakeBtn = createActionButton('Retake Quiz', 'mi-quiz-button mi-quiz-button-secondary', () => {
         if (confirm('Are you sure? Your saved results will be overwritten when you complete the new quiz.')) {
           resultsDiv.style.display = 'none';
           resultsDiv.innerHTML = '';
@@ -807,7 +669,7 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
       actionsContainer.appendChild(retakeBtn);
 
       // Delete Results Button
-      const deleteBtn = createActionButton('🗑️ Delete My Results', 'mi-quiz-button mi-quiz-button-danger', (e) => {
+      const deleteBtn = createActionButton('Delete My Results', 'mi-quiz-button mi-quiz-button-danger', (e) => {
         if (!confirm('Are you sure you want to permanently delete your saved results? This cannot be undone.')) return;
 
         const btn = e.currentTarget;
@@ -875,116 +737,62 @@ console.log(">>> MI QUIZ FILE LOADED <<<");
     window.scrollTo(0, 0);
   }
 
-  // --- Initialization ---
-  function init() {
-    console.log('MI Quiz: Init started');
-    console.log('MI Quiz Data:', typeof miq_quiz_data !== 'undefined' ? miq_quiz_data : 'undefined');
-
-    if (typeof currentUser === 'undefined' || !currentUser) {
-      console.log('MI Quiz: No currentUser found');
-    } else {
-      console.log('MI Quiz: CurrentUser:', currentUser);
-    }
-
-    if (autoBtn) {
-      autoBtn.addEventListener('click', autoFill);
-    }
-
-    if (autoAvg) autoAvg.addEventListener('click', () => generateAndSaveAll('average'));
-    if (autoNeg) autoNeg.addEventListener('click', () => generateAndSaveAll('negative'));
-    if (autoExc) autoExc.addEventListener('click', () => generateAndSaveAll('excellent'));
-
-    // On page load, check for any existing results to display
-    if (currentUser) {
-      // Force adult age if not set
-      try {
-        const localAge = (getUrlAge() || localStorage.getItem('mc_age_group'));
-        if (localAge && (!ageGroup || ageGroup === 'adult')) {
-          fetch(ajaxUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ action: 'mc_save_age_group', _ajax_nonce: ageNonce || '', age_group: localAge })
-          }).catch(() => { });
-        }
-      } catch (e) { }
-
-      if (currentUser.savedResults) {
-        console.log('MI Quiz: Found saved results, rendering results.');
-        const r = currentUser.savedResults;
-        age = r.age || 'adult';
-        top3 = r.top3 || [];
-        detailed = r.detailed || {};
-        top5 = r.top5 || [];
-        bottom3 = r.bottom3 || [];
-        part1Scores = r.part1Scores || {};
-
-        if (ageGate) ageGate.style.display = 'none';
-
-        // Ensure stage is hidden for results view
-        const stage = $id('mi-stage');
-        if (stage) stage.style.display = 'none';
-
-        renderResults();
-        if (resultsDiv) resultsDiv.style.display = 'block';
-        return;
-      } else {
-        console.log('MI Quiz: No saved results found for user.');
+  // On page load, check for any existing results to display
+  if (currentUser) {
+    // If age in profile missing but we have a local selection, save it once
+    try {
+      const localAge = (getUrlAge() || localStorage.getItem('mc_age_group'));
+      if (localAge && (!ageGroup || ageGroup === 'adult')) {
+        fetch(ajaxUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ action: 'mc_save_age_group', _ajax_nonce: ageNonce || '', age_group: localAge })
+        }).catch(() => { });
       }
+    } catch (e) { }
+    if (currentUser.savedResults) {
+      const r = currentUser.savedResults;
+      age = r.age || 'adult';
+      top3 = r.top3 || [];
+      detailed = r.detailed || {};
+      top5 = r.top5 || [];
+      bottom3 = r.bottom3 || [];
+      part1Scores = r.part1Scores || {};
+
+      ageGate.style.display = 'none';
+      renderResults();
+
+      return;
     }
+  }
 
-    // If a staging start button is present, wait until clicked
-    const stageBtn = document.getElementById('mi-stage-start');
-    const stage = document.getElementById('mi-stage');
-    const containerEl = document.getElementById('mi-quiz-container');
-
-    console.log('MI Quiz: Stage elements check:', {
-      stageBtn: stageBtn ? 'found' : 'missing',
-      stage: stage ? 'found' : 'missing',
-      containerEl: containerEl ? 'found' : 'missing'
-    });
-
-    // Hide any section wrappers if needed (keep existing logic)
-    (function () {
-      const wrapper = document.querySelector('.quiz-wrapper');
-      if (!wrapper || !wrapper.parentElement) return;
-      const shouldHide = (el) => {
-        if (!el || !el.classList) return true;
-        if (el.classList.contains('quiz-funnel-card')) return false;
-        if (el.id === 'mi-about-modal') return false;
-        return true;
-      };
-      let el = wrapper.previousElementSibling; while (el) { if (shouldHide(el)) el.style.display = 'none'; el = el.previousElementSibling; }
-      el = wrapper.nextElementSibling; while (el) { if (shouldHide(el)) el.style.display = 'none'; el = el.nextElementSibling; }
-    })();
-
-    if (stageBtn && stage) {
-      console.log('MI Quiz: Stage button found, adding listener');
-      stageBtn.addEventListener('click', () => {
-        console.log('MI Quiz: Stage button clicked');
-        if (stage) stage.style.display = 'none';
-        if (containerEl) containerEl.style.display = 'block';
-        startPart1();
-      });
-
-      // If stage is mistakenly hidden but we haven't started, show it? 
-      // Or if it's hidden, maybe we should auto-start?
-      if (stage.style.display === 'none') {
-        console.log('MI Quiz: Stage hidden on load, auto-starting');
-        startPart1();
-      }
-    } else {
-      console.log('MI Quiz: No stage button or stage element found. Starting Part 1 immediately.');
+  // If a staging start button is present, wait until clicked
+  const stageBtn = document.getElementById('mi-stage-start');
+  const stage = document.getElementById('mi-stage');
+  const containerEl = document.getElementById('mi-quiz-container');
+  // Hide any page content before/after our wrapper (About sections placed in page body)
+  (function () {
+    const wrapper = document.querySelector('.quiz-wrapper');
+    if (!wrapper || !wrapper.parentElement) return;
+    const shouldHide = (el) => {
+      if (!el || !el.classList) return true;
+      // Keep the funnel preview card visible and keep the About modal visible
+      if (el.classList.contains('quiz-funnel-card')) return false;
+      if (el.id === 'mi-about-modal') return false;
+      return true;
+    };
+    let el = wrapper.previousElementSibling; while (el) { if (shouldHide(el)) el.style.display = 'none'; el = el.previousElementSibling; }
+    el = wrapper.nextElementSibling; while (el) { if (shouldHide(el)) el.style.display = 'none'; el = el.nextElementSibling; }
+  })();
+  if (stageBtn && stage && containerEl) {
+    stageBtn.addEventListener('click', () => {
+      if (stage) stage.style.display = 'none';
       if (containerEl) containerEl.style.display = 'block';
       startPart1();
-    }
-  }
-
-  // Expose and Run
-  window.miQuizInit = init;
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    });
   } else {
-    init();
+    // Start immediately on legacy pages
+    startPart1();
   }
-})();
 
+})();

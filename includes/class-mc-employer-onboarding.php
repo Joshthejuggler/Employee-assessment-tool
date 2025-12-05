@@ -72,13 +72,16 @@ class MC_Employer_Onboarding
         $company_name = get_user_meta($user_id, 'mc_company_name', true);
         $logo_id = get_user_meta($user_id, 'mc_company_logo_id', true);
         $logo_url = $logo_id ? wp_get_attachment_url($logo_id) : '';
+        $industry = get_user_meta($user_id, 'mc_workplace_industry', true);
+        $values = get_user_meta($user_id, 'mc_workplace_values', true);
+        $culture = get_user_meta($user_id, 'mc_workplace_culture', true);
         ?>
         <div class="mc-onboarding-step">
             <div class="mc-step-indicator">
                 <div class="mc-step-badge">Step 1 of 2</div>
             </div>
             <h2>Setup Your Company</h2>
-            <p class="mc-step-description">Enter your company name and logo to personalize the experience for your employees.
+            <p class="mc-step-description">Complete your company profile to help us provide contextual insights for your team.
             </p>
 
             <form method="post" action="" enctype="multipart/form-data" class="mc-onboarding-form">
@@ -112,6 +115,27 @@ class MC_Employer_Onboarding
                         </label>
                     </div>
                     <p class="mc-input-helper">Upload a PNG or JPG file (max 2MB). This will appear on employee invitations.</p>
+                </div>
+
+                <div class="mc-form-group">
+                    <label for="industry">Industry / Sector <span class="mc-required">*</span></label>
+                    <input type="text" id="industry" name="industry" value="<?php echo esc_attr($industry); ?>" required
+                        class="mc-input" placeholder="e.g. Tech, Healthcare, Retail">
+                    <p class="mc-input-helper">This helps us provide industry-specific insights.</p>
+                </div>
+
+                <div class="mc-form-group">
+                    <label for="values">Company Values <span class="mc-required">*</span></label>
+                    <textarea id="values" name="values" rows="3" required class="mc-input"
+                        placeholder="e.g. Innovation, Integrity, Customer Obsession"><?php echo esc_textarea($values); ?></textarea>
+                    <p class="mc-input-helper">List your core values that define your company culture.</p>
+                </div>
+
+                <div class="mc-form-group">
+                    <label for="culture">Company Culture / About <span class="mc-required">*</span></label>
+                    <textarea id="culture" name="culture" rows="3" required class="mc-input"
+                        placeholder="Briefly describe your work environment..."><?php echo esc_textarea($culture); ?></textarea>
+                    <p class="mc-input-helper">Help us understand your team's working environment.</p>
                 </div>
 
                 <div class="mc-form-actions">
@@ -347,6 +371,17 @@ class MC_Employer_Onboarding
             if (isset($_POST['company_name'])) {
                 update_user_meta($user_id, 'mc_company_name', sanitize_text_field($_POST['company_name']));
 
+                // Save workplace context
+                if (isset($_POST['industry'])) {
+                    update_user_meta($user_id, 'mc_workplace_industry', sanitize_text_field($_POST['industry']));
+                }
+                if (isset($_POST['values'])) {
+                    update_user_meta($user_id, 'mc_workplace_values', sanitize_textarea_field($_POST['values']));
+                }
+                if (isset($_POST['culture'])) {
+                    update_user_meta($user_id, 'mc_workplace_culture', sanitize_textarea_field($_POST['culture']));
+                }
+
                 // Handle Logo Upload
                 if (!empty($_FILES['company_logo']['name'])) {
                     require_once(ABSPATH . 'wp-admin/includes/image.php');
@@ -428,6 +463,9 @@ class MC_Employer_Onboarding
                         $share_code = strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 6));
                         update_user_meta($user_id, 'mc_company_share_code', $share_code);
                     }
+
+                    // Link the employer to themselves (so they don't see the "Join Team" prompt)
+                    update_user_meta($user_id, 'mc_linked_employer_id', $user_id);
 
                     // Send invites
                     $company_name = get_user_meta($user_id, 'mc_company_name', true) ?: 'Our Company';
