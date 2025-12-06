@@ -962,15 +962,15 @@ class MC_Super_Admin
         }
 
         // Helper to generate answers based on strain level (base_score)
-        // 1 = Excellent (Low Strain) -> Ans: 1-2
-        // 3 = Average (Mod Strain)   -> Ans: 2-4
+        // 1 = Excellent (Low Strain) -> Ans: 1-2 (mostly 1)
+        // 3 = Average (Mod Strain)   -> Ans: 2-3 (mostly 2, some 3) - was too high
         // 5 = Poor (High Strain)     -> Ans: 4-5
         $get_ans = function ($base) {
             if ($base == 1)
                 return rand(1, 2); // Mostly 1-2
             if ($base == 5)
                 return rand(4, 5); // Mostly 4-5
-            return rand(2, 4); // Spread 2-4
+            return rand(2, 3); // Spread 2-3 (lowered from 2-4 to avoid 75% strain)
         };
 
         // Helper for capability scores (add variation)
@@ -979,25 +979,35 @@ class MC_Super_Admin
         };
 
         $base_score = 3;
-        if ($type === 'excellent')
-            $base_score = 1;
-        if ($type === 'poor')
-            $base_score = 5;
+        $score_min = 12; // Moderate skills
+        $score_max = 24;
 
-        // 1. Generate MI Data (Range 0-30 usually, 15-24 is decent high-avg)
+        if ($type === 'excellent') {
+            $base_score = 1;
+            $score_min = 18; // High skills
+            $score_max = 30; // Max
+        }
+        if ($type === 'poor') {
+            $base_score = 5;
+            $score_min = 5; // Low skills
+            $score_max = 16;
+        }
+
+        // 1. Generate MI Data (Range 0-30 usually)
         $mi_scores = [
-            'linguistic' => $get_score(12, 26),
-            'logical' => $get_score(12, 26),
-            'spatial' => $get_score(12, 26),
-            'musical' => $get_score(12, 26),
-            'kinesthetic' => $get_score(12, 26),
-            'interpersonal' => $get_score(12, 26),
-            'intrapersonal' => $get_score(12, 26),
-            'naturalist' => $get_score(12, 26),
-            // Strain placeholders (will be recalculated by scorer, but good to have approx)
-            'si-rumination' => $base_score * 4,
-            'si-avoidance' => $base_score * 3,
-            'si-emotional-flood' => $base_score * 3
+            'linguistic' => $get_score($score_min, $score_max),
+            'logical' => $get_score($score_min, $score_max),
+            'spatial' => $get_score($score_min, $score_max),
+            'musical' => $get_score($score_min, $score_max),
+            'kinesthetic' => $get_score($score_min, $score_max),
+            'interpersonal' => $get_score($score_min, $score_max),
+            'intrapersonal' => $get_score($score_min, $score_max),
+            'naturalist' => $get_score($score_min, $score_max),
+            // Strain placeholders (Corrected multipliers based on question counts)
+            // MI: Rumination (4), Avoidance (3), Emotional Flood (3)
+            'si-rumination' => $get_ans($base_score) * 4,
+            'si-avoidance' => $get_ans($base_score) * 3,
+            'si-emotional-flood' => $get_ans($base_score) * 3
         ];
 
         $mi_answers = [
@@ -1025,15 +1035,20 @@ class MC_Super_Admin
 
 
         // 2. Generate CDT Data (Range 0-20ish)
+        // Tune range: if score_max is 24 (MI), CDT max is usually 20. Let's scale slightly or use direct variation.
+        $cdt_min = intval($score_min * 0.8);
+        $cdt_max = intval($score_max * 0.8);
+
         $cdt_scores = [
-            'ambiguity-tolerance' => $get_score(10, 20),
-            'value-conflict-navigation' => $get_score(10, 20),
-            'self-confrontation-capacity' => $get_score(10, 20),
-            'discomfort-regulation' => $get_score(10, 20),
-            'conflict-resolution-tolerance' => $get_score(10, 20),
-            'si-rumination' => $base_score * 3,
-            'si-avoidance' => $base_score * 4,
-            'si-emotional-flood' => $base_score * 3
+            'ambiguity-tolerance' => $get_score($cdt_min, $cdt_max),
+            'value-conflict-navigation' => $get_score($cdt_min, $cdt_max),
+            'self-confrontation-capacity' => $get_score($cdt_min, $cdt_max),
+            'discomfort-regulation' => $get_score($cdt_min, $cdt_max),
+            'conflict-resolution-tolerance' => $get_score($cdt_min, $cdt_max),
+            // CDT: Rumination (3), Avoidance (4), Emotional Flood (3)
+            'si-rumination' => $get_ans($base_score) * 3,
+            'si-avoidance' => $get_ans($base_score) * 4,
+            'si-emotional-flood' => $get_ans($base_score) * 3
         ];
 
         $cdt_answers = [
@@ -1062,13 +1077,14 @@ class MC_Super_Admin
 
         // 3. Generate Bartle Data
         $bartle_scores = [
-            'explorer' => $get_score(10, 20),
-            'achiever' => $get_score(10, 20),
-            'socializer' => $get_score(10, 20),
-            'strategist' => $get_score(10, 20),
-            'si-rumination' => $base_score * 4,
-            'si-avoidance' => $base_score * 3,
-            'si-emotional-flood' => $base_score * 3
+            'explorer' => $get_score($cdt_min, $cdt_max),
+            'achiever' => $get_score($cdt_min, $cdt_max),
+            'socializer' => $get_score($cdt_min, $cdt_max),
+            'strategist' => $get_score($cdt_min, $cdt_max),
+            // Bartle: Rumination (4), Avoidance (3), Emotional Flood (3)
+            'si-rumination' => $get_ans($base_score) * 4,
+            'si-avoidance' => $get_ans($base_score) * 3,
+            'si-emotional-flood' => $get_ans($base_score) * 3
         ];
 
         $bartle_answers = [
@@ -1094,14 +1110,48 @@ class MC_Super_Admin
 
         update_user_meta($user_id, 'bartle_quiz_results', $bartle_results);
 
-        // 4. Trigger Completion & Strain Index
+        // 3a. Save Metadata for Admin Report
+        update_user_meta($user_id, 'mc_last_test_data_type', $type);
+        update_user_meta($user_id, 'mc_last_test_data_timestamp', current_time('mysql'));
+
+        // 3b. Handle Role Context (Vital for AI "Fit" Score)
+        $custom_title = sanitize_text_field($_POST['role_title'] ?? '');
+        $custom_resp = sanitize_text_field($_POST['role_resp'] ?? '');
+
+        if (!empty($custom_title) || !empty($custom_resp)) {
+            $custom_role = [
+                'role' => $custom_title ?: 'Standard Role (Test)',
+                'responsibilities' => $custom_resp ?: 'General duties.',
+                'environment' => 'General professional environment.'
+            ];
+            update_user_meta($user_id, 'mc_employee_role_context', $custom_role);
+        } else {
+            // If no custom role provided, ensure at least a default exists
+            $existing_role = get_user_meta($user_id, 'mc_employee_role_context', true);
+            if (empty($existing_role)) {
+                $mock_role = [
+                    'role' => 'Growth Operations Lead (Test)',
+                    'responsibilities' => 'Handle high-pressure deadlines, make autonomous decisions, manage complex stakeholder conflicts.',
+                    'environment' => 'Fast-paced, high-autonomy, resilience-critical.'
+                ];
+                update_user_meta($user_id, 'mc_employee_role_context', $mock_role);
+            }
+        }
+
+        // 4. Trigger Completion & Strain Index & Force AI Analysis
         try {
             if (class_exists('MC_Funnel')) {
+                // This checks completion status and sends email if first time
                 MC_Funnel::check_completion_and_notify($user_id);
             }
 
             if (class_exists('MC_Strain_Index_Scorer')) {
                 MC_Strain_Index_Scorer::calculate_from_user_meta($user_id);
+            }
+
+            // FORCE fresh analysis for test data (bypasses "already completed" check in funnel)
+            if (class_exists('Micro_Coach_AI')) {
+                Micro_Coach_AI::generate_analysis_on_completion($user_id);
             }
         } catch (Throwable $e) {
             error_log('MC Test Data Generation Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());

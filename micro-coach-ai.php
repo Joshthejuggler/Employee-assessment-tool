@@ -1428,8 +1428,8 @@ TXT;
             "    \"ideal_conditions\": \"Summary of ideal working conditions\"\n" .
             "  },\n" .
             "  \"overall_fit\": {\n" .
-            "    \"score\": 85,\n" .
-            "    \"rationale\": \"Brief explanation of fit based on company context\"\n" .
+            "    \"score\": \"<<INTEGER 0-100>>\",\n" .
+            "    \"rationale\": \"Brief explanation of fit based on company context. CRITICAL: If the candidate has High scores in Strain Index (Rumination, Avoidance, Flood) OR if their profile directly conflicts with the Role Requirements, you MUST DEDUCT significantly from the score. A 'Poor' fit should rarely exceed 60/100.\"\n" .
             "  },\n" .
             "  \"communication_playbook\": {\n" .
             "    \"do\": [\"Specific advice 1\", \"Specific advice 2\"],\n" .
@@ -1543,6 +1543,7 @@ TXT;
 
         // Save Analysis
         update_user_meta($user_id, 'mc_assessment_analysis', $analysis);
+        update_user_meta($user_id, 'mc_analysis_last_generated', current_time('mysql')); // Save generation timestamp
 
         return $analysis;
     }
@@ -1735,8 +1736,13 @@ TXT;
                     'detailed_answers' => $detailed_answers,
                     'name' => $user_info ? $user_info->display_name : 'Employee',
                     'id' => $user_id,
-                    'debug_status' => 'success'
+                    'debug_status' => 'success',
                 ];
+                // Add Metadata for Admin Report
+                $response_data['test_data_type'] = get_user_meta($user_id, 'mc_last_test_data_type', true);
+                $response_data['test_data_timestamp'] = get_user_meta($user_id, 'mc_last_test_data_timestamp', true);
+                $response_data['role_context'] = get_user_meta($user_id, 'mc_employee_role_context', true);
+                $response_data['analysis_timestamp'] = get_user_meta($user_id, 'mc_analysis_last_generated', true);
 
                 wp_send_json_success($response_data);
             } else {
@@ -1935,7 +1941,12 @@ TXT;
                 'strain_breakdown' => $strain_breakdown,
                 'detailed_answers' => $detailed_answers,
                 'name' => $user_info ? $user_info->display_name : 'Employee',
-                'id' => $user_id
+                'id' => $user_id,
+                // Add Metadata for Admin Report
+                'test_data_type' => get_user_meta($user_id, 'mc_last_test_data_type', true),
+                'test_data_timestamp' => get_user_meta($user_id, 'mc_last_test_data_timestamp', true),
+                'role_context' => get_user_meta($user_id, 'mc_employee_role_context', true),
+                'analysis_timestamp' => get_user_meta($user_id, 'mc_analysis_last_generated', true)
             ];
 
             wp_send_json_success($response_data);

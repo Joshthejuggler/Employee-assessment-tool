@@ -808,12 +808,12 @@ function mc_render_admin_testing_page()
         }
 
         /* .mc-container {
-                                                                                                                        max-width: 1200px;
-                                                                                                                        margin: 0 auto;
-                                                                                                                        padding: 2rem;
-                                                                                                                        font-family: 'Inter', system-ui, sans-serif;
-                                                                                                                        color: var(--mc-text-main);
-                                                                                                                    } */
+                                                                                                                                                                    max-width: 1200px;
+                                                                                                                                                                    margin: 0 auto;
+                                                                                                                                                                    padding: 2rem;
+                                                                                                                                                                    font-family: 'Inter', system-ui, sans-serif;
+                                                                                                                                                                    color: var(--mc-text-main);
+                                                                                                                                                                } */
 
         /* Deep Report Modal Override */
         .mc-deep-report-modal {
@@ -840,10 +840,10 @@ function mc_render_admin_testing_page()
             padding: 2rem 3rem;
             border-bottom: 1px solid #e2e8f0;
             /* position: sticky;
-                                                                                                                            top: 0;
-                                                                                                                            z-index: 10;
-                                                                                                                            background: rgba(255,255,255,0.95);
-                                                                                                                            backdrop-filter: blur(8px); */
+                                                                                                                                                                        top: 0;
+                                                                                                                                                                        z-index: 10;
+                                                                                                                                                                        background: rgba(255,255,255,0.95);
+                                                                                                                                                                        backdrop-filter: blur(8px); */
         }
 
         .mc-report-header-row {
@@ -1800,6 +1800,16 @@ function mc_render_admin_testing_page()
             </div>
 
             <div id="mc-report-content" class="mc-deep-report">
+                <!-- Test Data Metadata (Admin Debug) -->
+                <div id="mc-test-metadata-container"
+                    style="display:none; background:#fffbeb; border:1px solid #fcd34d; padding:12px 20px; font-size:13px; color:#92400e; margin-bottom: 20px; border-radius: 6px;">
+                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                        <span style="font-size:16px;">🛠️</span>
+                        <div>
+                            <strong>TEST DATA GENERATED:</strong> <span id="mc-test-metadata-text"></span>
+                        </div>
+                    </div>
+                </div>
                 <!-- Hero Section -->
                 <div class="mc-report-hero">
                     <div class="mc-report-header-row"
@@ -2178,7 +2188,32 @@ function mc_render_admin_testing_page()
             </div>
             <div class="mc-admin-modal-body" style="padding: 20px;">
                 <p>Select the type of data to generate for <strong id="mc-test-data-user-name"></strong>:</p>
+
+                <!-- Custom Role Context Inputs -->
+                <div
+                    style="background: #f0f4f8; padding: 10px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #dbeafe;">
+                    <h4 style="margin: 0 0 10px; font-size: 14px; color: #1e3a8a;">Optional: Define Target Role</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Role
+                                Title</label>
+                            <input type="text" id="mc-test-role-title" placeholder="e.g. Senior Sales Manager"
+                                style="width: 100%; font-size: 13px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label
+                                style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Responsibilities</label>
+                            <input type="text" id="mc-test-role-resp" placeholder="e.g. Lead team, meet quotas"
+                                style="width: 100%; font-size: 13px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mc-test-data-options" style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="button" onclick="submitTestData('poor')" style="text-align: left; padding: 10px;">
+                        <strong>Add Below Average Data</strong><br>
+                        <small>Generates low resilience scores and high strain indicators.</small>
+                    </button>
                     <button class="button" onclick="submitTestData('average')" style="text-align: left; padding: 10px;">
                         <strong>Add Average Data</strong><br>
                         <small>Generates moderate scores and balanced strain indicators.</small>
@@ -2186,10 +2221,6 @@ function mc_render_admin_testing_page()
                     <button class="button" onclick="submitTestData('excellent')" style="text-align: left; padding: 10px;">
                         <strong>Add Excellent Data</strong><br>
                         <small>Generates high resilience scores and low strain indicators.</small>
-                    </button>
-                    <button class="button" onclick="submitTestData('poor')" style="text-align: left; padding: 10px;">
-                        <strong>Add Poor Data</strong><br>
-                        <small>Generates low resilience scores and high strain indicators.</small>
                     </button>
                 </div>
                 <div id="mc-test-data-loading" style="display: none; text-align: center; margin-top: 20px;">
@@ -2249,15 +2280,65 @@ function mc_render_admin_testing_page()
 
         function openAnalysisModal(data) {
             console.log('DEBUG: openAnalysisModal called (Admin)');
-            console.log('DEBUG: Ful        l data object:', JSON.stringify(data, null, 2));
-            // Reset loading state
+            console.log('DEBUG: Full data object:', JSON.stringify(data, null, 2));
+            // Reset loading s             tate
             const loadingDiv = document.getElementById('mc-report-loading');
             const contentDiv = document.getElementById('mc-report-content');
             if (loadingDiv) loadingDiv.style.display = 'none';
             if (contentDiv) contentDiv.style.display = 'block';
 
             // Basic Info
-            document.getElementById('mc-analysis-name').textContent = data.name;
+            const nameEl = document.getElementById('mc-analysis-name');
+            if (nameEl) nameEl.textContent = data.name;
+
+            // --- TEST DATA METADATA (Admin Only) ---
+            const metaContainer = document.getElementById('mc-test-metadata-container');
+            const metaText = document.getElementById('mc-test-metadata-text');
+            if (metaContainer && metaText) {
+                if (data.test_data_type) {
+                    const typeCap = data.test_data_type.charAt(0).toUpperCase() + data.test_data_type.slice(1);
+                    let metaInfo = `Type: <strong>${typeCap}</strong>`;
+
+                    if (data.test_data_timestamp) {
+                        metaInfo += ` &bull; ${data.test_data_timestamp}`;
+                    }
+
+                    // --- STALE CHECK ---
+                    if (data.analysis_timestamp && data.test_data_timestamp) {
+                        const analysisTime = new Date(data.analysis_timestamp.replace(' ', 'T')); // Handle SQL format
+                        const testTime = new Date(data.test_data_timestamp.replace(' ', 'T'));
+
+                        // Add a small buffer (e.g. 5 seconds) to avoid false positives due to race conditions
+                        // If Analysis is OLDER than Test Data (by > 2 seconds), it's Stale
+                        if (analysisTime < new Date(testTime.getTime() - 2000)) {
+                            metaInfo += ` <span style="background: #dc2626; color: white; padding: 2px 6px; border-radius: 4px; border: 1px solid #991b1b; margin-left:8px; font-weight:bold; font-size:11px;">STALE REPORT (Regenerate Required)</span>`;
+                            metaContainer.style.background = '#fef2f2'; // Reddish tint
+                            metaContainer.style.borderColor = '#ef4444';
+                        } else {
+                            metaInfo += ` <span style="background: #166534; color: white; padding: 2px 6px; border-radius: 4px; border: 1px solid #166534; margin-left:8px; font-weight:bold; font-size:11px;">ACTIVE</span>`;
+                            metaContainer.style.background = '#fff8cc'; // Back to yellow
+                            metaContainer.style.borderColor = '#e1b93f';
+                        }
+                    } else {
+                        // Default style if no timestamp comparison possible
+                        metaContainer.style.background = '#fff8cc';
+                        metaContainer.style.borderColor = '#e1b93f';
+                    }
+
+                    if (data.role_context && data.role_context.role) {
+                        metaInfo += `<br>Role: <strong>${data.role_context.role}</strong>`;
+                    }
+
+                    if (data.role_context && data.role_context.responsibilities) {
+                        metaInfo += ` &bull; Resp: ${data.role_context.responsibilities}`;
+                    }
+
+                    metaText.innerHTML = metaInfo;
+                    metaContainer.style.display = 'block';
+                } else {
+                    metaContainer.style.display = 'none';
+                }
+            }
 
             // Company Name
             const companyLabel = document.getElementById('mc-analysis-company');
@@ -2283,7 +2364,10 @@ function mc_render_admin_testing_page()
                 const heroFitScore = document.getElementById('mc-hero-fit-score');
                 const heroFitRationale = document.getElementById('mc-hero-fit-rationale');
                 if (heroFitScore) heroFitScore.textContent = fitScore;
-                if (heroFitRationale) heroFitRationale.textContent = fitRationale || 'Based on role & workplace context.';
+                if (heroFitRationale) {
+                    // Make it clearer that this is the AI's specific reasoning
+                    heroFitRationale.innerHTML = '<strong>AI Rationale:</strong> ' + (fitRationale || 'Analysis based on provided role & workplace context.');
+                }
 
                 // Color coding logic...
                 const score = parseInt(fitScore);
@@ -2304,6 +2388,14 @@ function mc_render_admin_testing_page()
             if (contextSummary) {
                 contextSummary.textContent = execSnapshot.context_summary || 'Analysis based on provided role and workplace context.';
             }
+
+            // --- UPDATE METADATA WITH RATIONALE (DEBUGGING VIEW) ---
+            // We already populated metaText earlier in the function, but let's append the rationale here if it exists.
+            if (metaContainer && metaText && fitRationale) {
+                metaText.innerHTML += `<div style="margin-top:8px; border-top:1px solid #e1b93f; padding-top:4px; font-size:11px; color:#555;"><strong>AI Score Rationale:</strong> ${fitRationale}</div>`;
+            }
+            // Ensure we don't duplicate if function is called multiple times (though content matches)
+            // This block runs after the initial meta setup, so it simply adds to the DOM element.
 
             // Top Strengths
             const strengthsList = document.getElementById('mc-hero-strengths');
@@ -2821,6 +2913,8 @@ function mc_render_admin_testing_page()
                     action: 'mc_generate_test_data',
                     user_id: currentTestDataUserId,
                     type: type,
+                    role_title: document.getElementById('mc-test-role-title').value,
+                    role_resp: document.getElementById('mc-test-role-resp').value,
                     nonce: '<?php echo wp_create_nonce('mc_admin_testing_nonce'); ?>'
                 });
 
@@ -2832,7 +2926,9 @@ function mc_render_admin_testing_page()
                     .then(response => response.json())
                     .then(response => {
                         if (response.success) {
-                            location.reload();
+                            const loadingDiv = document.getElementById('mc-test-data-loading');
+                            loadingDiv.innerHTML = '<div style="color: #46b450; font-size: 16px; font-weight: bold; padding: 20px;">✅ Data Generated Successfully!<br><span style="font-size:13px; font-weight:normal; color:#666;">Reloading page...</span></div>';
+                            setTimeout(() => location.reload(), 1500);
                         } else {
                             alert('Error: ' + (response.data.message || 'Unknown error'));
                             closeAddTestDataModal();
@@ -2850,8 +2946,6 @@ function mc_render_admin_testing_page()
         }
     </script>
 <?php }
-
-
 
 
 
