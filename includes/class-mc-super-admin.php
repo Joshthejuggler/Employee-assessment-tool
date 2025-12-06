@@ -19,6 +19,8 @@ class MC_Super_Admin
             add_action('wp_ajax_mc_delete_employer', [$this, 'ajax_delete_employer']);
             add_action('wp_ajax_mc_send_employer_invite', [$this, 'ajax_send_employer_invite']);
             add_action('wp_ajax_delete_test_user', [$this, 'ajax_delete_test_user']);
+            add_action('wp_ajax_mc_generate_test_data', [$this, 'ajax_generate_test_data']);
+
         }
         // Note: Switch back button is now handled by MC_User_Switcher class
     }
@@ -939,6 +941,174 @@ class MC_Super_Admin
                 'title' => 'Switch back to your original account'
             )
         ));
+    }
+
+    /**
+     * AJAX: Generate test data for user.
+     */
+    public function ajax_generate_test_data()
+    {
+        check_ajax_referer('mc_admin_testing_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+
+        $user_id = intval($_POST['user_id'] ?? 0);
+        $type = sanitize_text_field($_POST['type'] ?? 'average');
+
+        if (!$user_id) {
+            wp_send_json_error(['message' => 'Invalid user ID']);
+        }
+
+        // Helper to generate answers based on strain level (base_score)
+        // 1 = Excellent (Low Strain) -> Ans: 1-2
+        // 3 = Average (Mod Strain)   -> Ans: 2-4
+        // 5 = Poor (High Strain)     -> Ans: 4-5
+        $get_ans = function ($base) {
+            if ($base == 1)
+                return rand(1, 2); // Mostly 1-2
+            if ($base == 5)
+                return rand(4, 5); // Mostly 4-5
+            return rand(2, 4); // Spread 2-4
+        };
+
+        // Helper for capability scores (add variation)
+        $get_score = function ($min, $max) {
+            return rand($min, $max);
+        };
+
+        $base_score = 3;
+        if ($type === 'excellent')
+            $base_score = 1;
+        if ($type === 'poor')
+            $base_score = 5;
+
+        // 1. Generate MI Data (Range 0-30 usually, 15-24 is decent high-avg)
+        $mi_scores = [
+            'linguistic' => $get_score(12, 26),
+            'logical' => $get_score(12, 26),
+            'spatial' => $get_score(12, 26),
+            'musical' => $get_score(12, 26),
+            'kinesthetic' => $get_score(12, 26),
+            'interpersonal' => $get_score(12, 26),
+            'intrapersonal' => $get_score(12, 26),
+            'naturalist' => $get_score(12, 26),
+            // Strain placeholders (will be recalculated by scorer, but good to have approx)
+            'si-rumination' => $base_score * 4,
+            'si-avoidance' => $base_score * 3,
+            'si-emotional-flood' => $base_score * 3
+        ];
+
+        $mi_answers = [
+            "When I face a difficult decision, I need extra time to figure out the 'right' move." => $get_ans($base_score),
+            "I replay conversations or choices in my head to see what I could have done differently." => $get_ans($base_score),
+            "I sometimes feel mentally 'stuck' when two of my thoughts or values clash." => $get_ans($base_score),
+            "I often need to think through many possibilities before I can focus." => $get_ans($base_score),
+            "I often feel a strong urge to step away from a problem when it becomes confusing." => $get_ans($base_score),
+            "If a task feels uncertain, I tend to put it off until I feel more ready." => $get_ans($base_score),
+            "I prefer learning environments where I can step away and come back when it feels right." => $get_ans($base_score),
+            "When trying something new, my emotions can shift suddenly depending on how it goes." => $get_ans($base_score),
+            "When too much is happening at once, I feel overwhelmed before I can think clearly." => $get_ans($base_score),
+            "Strong feelings can suddenly disrupt my ability to stay engaged with a task." => $get_ans($base_score)
+        ];
+
+        $mi_results = [
+            'scores' => $mi_scores,
+            'sortedScores' => [],
+            'ageGroup' => 'adult',
+            'part1Scores' => $mi_scores,
+            'answers' => $mi_answers
+        ];
+
+        update_user_meta($user_id, 'miq_quiz_results', $mi_results);
+
+
+        // 2. Generate CDT Data (Range 0-20ish)
+        $cdt_scores = [
+            'ambiguity-tolerance' => $get_score(10, 20),
+            'value-conflict-navigation' => $get_score(10, 20),
+            'self-confrontation-capacity' => $get_score(10, 20),
+            'discomfort-regulation' => $get_score(10, 20),
+            'conflict-resolution-tolerance' => $get_score(10, 20),
+            'si-rumination' => $base_score * 3,
+            'si-avoidance' => $base_score * 4,
+            'si-emotional-flood' => $base_score * 3
+        ];
+
+        $cdt_answers = [
+            "When things do not make sense yet, I keep turning the problem over in my mind." => $get_ans($base_score),
+            "I often try to mentally solve confusion before I move forward." => $get_ans($base_score),
+            "Even after making a decision, I sometimes revisit it in my mind repeatedly." => $get_ans($base_score),
+            "When I face two good options, I sometimes freeze and struggle to choose." => $get_ans($base_score),
+            "When I am unsure what is right, I tend to delay taking action." => $get_ans($base_score),
+            "When things feel uncertain, I prefer to step back rather than push ahead." => $get_ans($base_score),
+            "If something feels ambiguous, I may wait for clarity instead of acting right away." => $get_ans($base_score),
+            "Unexpected changes can hit me emotionally before I can think them through." => $get_ans($base_score),
+            "Contradictions or mixed signals can feel emotionally intense for me." => $get_ans($base_score),
+            "Confusing situations can create a rush of feelings that make clarity hard." => $get_ans($base_score)
+        ];
+
+        $cdt_results = [
+            'scores' => $cdt_scores,
+            'sortedScores' => [],
+            'ageGroup' => 'adult',
+            'part1Scores' => $cdt_scores,
+            'answers' => $cdt_answers
+        ];
+
+        update_user_meta($user_id, 'cdt_quiz_results', $cdt_results);
+
+
+        // 3. Generate Bartle Data
+        $bartle_scores = [
+            'explorer' => $get_score(10, 20),
+            'achiever' => $get_score(10, 20),
+            'socializer' => $get_score(10, 20),
+            'strategist' => $get_score(10, 20),
+            'si-rumination' => $base_score * 4,
+            'si-avoidance' => $base_score * 3,
+            'si-emotional-flood' => $base_score * 3
+        ];
+
+        $bartle_answers = [
+            "After a challenge or interaction, I often think about it long after it is over." => $get_ans($base_score),
+            "I often explore ideas deeply because I want to understand every angle first." => $get_ans($base_score),
+            "I sometimes research or plan so much that starting becomes difficult." => $get_ans($base_score),
+            "I often revisit past choices to hunt for patterns or lessons." => $get_ans($base_score),
+            "I sometimes hesitate to start something new if I am not sure I will do it well." => $get_ans($base_score),
+            "When competition or pressure rises, I might withdraw instead of pushing harder." => $get_ans($base_score),
+            "When tasks feel overwhelming, I tend to step away for a break." => $get_ans($base_score),
+            "In group settings, strong emotions can throw me off track." => $get_ans($base_score),
+            "If something unexpected happens, my emotions can spike quickly." => $get_ans($base_score),
+            "My reactions can become intense when something important feels threatened." => $get_ans($base_score)
+        ];
+
+        $bartle_results = [
+            'scores' => $bartle_scores,
+            'sortedScores' => [],
+            'ageGroup' => 'adult',
+            'part1Scores' => $bartle_scores,
+            'answers' => $bartle_answers
+        ];
+
+        update_user_meta($user_id, 'bartle_quiz_results', $bartle_results);
+
+        // 4. Trigger Completion & Strain Index
+        try {
+            if (class_exists('MC_Funnel')) {
+                MC_Funnel::check_completion_and_notify($user_id);
+            }
+
+            if (class_exists('MC_Strain_Index_Scorer')) {
+                MC_Strain_Index_Scorer::calculate_from_user_meta($user_id);
+            }
+        } catch (Throwable $e) {
+            error_log('MC Test Data Generation Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            wp_send_json_error(['message' => 'Error generating test data: ' . $e->getMessage()]);
+        }
+
+        wp_send_json_success(['message' => 'Test data generated successfully']);
     }
 
 }

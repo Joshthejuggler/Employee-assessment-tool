@@ -13,7 +13,8 @@
         scores: {},
         sortedScores: [],
         ageGroup: null,
-        needsAgeGroup: false
+        needsAgeGroup: false,
+        answers: {}
     };
 
     // --- Utility Functions ---
@@ -374,6 +375,10 @@
                     score = 6 - score; // Reverse score (1->5, 2->4, 3->3, 4->2, 5->1)
                 }
                 scores[cat] += score;
+
+                // Capture answer
+                const text = s.querySelector('.bartle-quiz-question-text')?.textContent || '';
+                if (text) quizState.answers[text] = val; // Store raw input (1-5)
             }
         });
 

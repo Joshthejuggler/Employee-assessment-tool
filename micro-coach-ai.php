@@ -50,6 +50,8 @@ class Micro_Coach_AI
 
         // AJAX: Generate analysis report manually
         add_action('wp_ajax_mc_generate_analysis_report', [$this, 'ajax_generate_analysis_report']);
+        // AJAX: View analysis report (loads cached data with detailed_answers on-demand)
+        add_action('wp_ajax_mc_view_analysis_report', [$this, 'ajax_view_analysis_report']);
     }
 
     /**
@@ -1555,33 +1557,391 @@ TXT;
             wp_send_json_error(['message' => 'Not authorized'], 403);
         }
 
-        $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+        try {
+            $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
 
-        if (!$user_id) {
-            wp_send_json_error(['message' => 'Invalid user ID'], 400);
+            if (!$user_id) {
+                wp_send_json_error(['message' => 'Invalid user ID'], 400);
+            }
+
+            // Generate the analysis
+            $success = self::generate_analysis_on_completion($user_id);
+
+            if ($success) {
+                // Fetch the updated analysis to return to the frontend
+                $updated_analysis = get_user_meta($user_id, 'mc_assessment_analysis', true);
+                $strain_results = get_user_meta($user_id, 'strain_index_results', true);
+
+                // Fix: Calculate Strain Index if missing (e.g. for manually generated test data)
+                if (empty($strain_results) && class_exists('MC_Strain_Index_Scorer')) {
+                    $strain_results = MC_Strain_Index_Scorer::calculate_from_user_meta($user_id);
+                }
+
+                // Add employee name for the modal
+                $user_info = get_userdata($user_id);
+
+                // Calculate Breakdown for Accordion
+                $mi = get_user_meta($user_id, 'miq_quiz_results', true);
+                $cdt = get_user_meta($user_id, 'cdt_quiz_results', true);
+                $bartle = get_user_meta($user_id, 'bartle_quiz_results', true);
+
+                // Ensure these are arrays for safe access
+                if (!is_array($mi))
+                    $mi = [];
+                if (!is_array($cdt))
+                    $cdt = [];
+                if (!is_array($bartle))
+                    $bartle = [];
+
+                $get_val = function ($arr, $key) {
+                    if (!is_array($arr))
+                        return 0;
+                    if (isset($arr['part1Scores'][$key]))
+                        return intval($arr['part1Scores'][$key]);
+                    if (isset($arr['scores'][$key]))
+                        return intval($arr['scores'][$key]);
+                    return 0;
+                };
+
+                $strain_breakdown = [
+                    'rumination' => [
+                        'MI' => $get_val($mi, 'si-rumination'),
+                        'CDT' => $get_val($cdt, 'si-rumination'),
+                        'Bartle' => $get_val($bartle, 'si-rumination')
+                    ],
+                    'avoidance' => [
+                        'MI' => $get_val($mi, 'si-avoidance'),
+                        'CDT' => $get_val($cdt, 'si-avoidance'),
+                        'Bartle' => $get_val($bartle, 'si-avoidance')
+                    ],
+                    'flood' => [
+                        'MI' => $get_val($mi, 'si-emotional-flood'),
+                        'CDT' => $get_val($cdt, 'si-emotional-flood'),
+                        'Bartle' => $get_val($bartle, 'si-emotional-flood')
+                    ]
+                ];
+
+
+                // Extract detailed answers by matching strain index questions to the answers array
+                // Load strain questions ONCE for all quizzes (outside the loop)
+                $all_strain_questions = [];
+
+                // Load MI questions
+                $mi_quiz_path = MC_QUIZ_PLATFORM_PATH . 'quizzes/mi-quiz/mi-questions.php';
+                if (file_exists($mi_quiz_path)) {
+                    include $mi_quiz_path;
+                    if (isset($mi_questions['adult'])) {
+                        $all_strain_questions['mi'] = [];
+                        foreach (['si-rumination', 'si-avoidance', 'si-emotional-flood'] as $cat) {
+                            $all_strain_questions['mi'][$cat] = $mi_questions['adult'][$cat] ?? [];
+                        }
+                    }
+                }
+
+                // Load CDT questions  
+                $cdt_quiz_path = MC_QUIZ_PLATFORM_PATH . 'quizzes/cdt-quiz/questions.php';
+                if (file_exists($cdt_quiz_path)) {
+                    include $cdt_quiz_path;
+                    if (isset($cdt_questions_base)) {
+                        $all_strain_questions['cdt'] = [];
+                        foreach (['si-rumination', 'si-avoidance', 'si-emotional-flood'] as $cat) {
+                            $qs = [];
+                            foreach ($cdt_questions_base[$cat] ?? [] as $qItem) {
+                                if (isset($qItem['text']))
+                                    $qs[] = $qItem['text'];
+                            }
+                            $all_strain_questions['cdt'][$cat] = $qs;
+                        }
+                    }
+                }
+
+                // Load Bartle questions
+                $bartle_quiz_path = MC_QUIZ_PLATFORM_PATH . 'quizzes/bartle-quiz/questions.php';
+                if (file_exists($bartle_quiz_path)) {
+                    include $bartle_quiz_path;
+                    if (isset($bartle_questions['adult'])) {
+                        $all_strain_questions['bartle'] = [];
+                        foreach (['si-rumination', 'si-avoidance', 'si-emotional-flood'] as $cat) {
+                            $qs = [];
+                            foreach ($bartle_questions['adult'][$cat] ?? [] as $qItem) {
+                                if (isset($qItem['text']))
+                                    $qs[] = $qItem['text'];
+                            }
+                            $all_strain_questions['bartle'][$cat] = $qs;
+                        }
+                    }
+                }
+
+                // Simple function to match answers to strain questions (no includes!)
+                $extract_strain_answers = function ($answers, $strain_questions) {
+                    $result = [
+                        'si-rumination' => [],
+                        'si-avoidance' => [],
+                        'si-emotional-flood' => []
+                    ];
+
+                    if (empty($answers) || !is_array($answers) || empty($strain_questions)) {
+                        return $result;
+                    }
+
+                    foreach ($strain_questions as $cat => $questions) {
+                        foreach ($questions as $q) {
+                            if (!is_string($q))
+                                continue;
+
+                            // Try the original question text first
+                            if (isset($answers[$q])) {
+                                $result[$cat][$q] = $answers[$q];
+                            } else {
+                                // Try with stripslashes (normalizes escaped quotes)
+                                $normalized_q = stripslashes($q);
+                                if (isset($answers[$normalized_q])) {
+                                    $result[$cat][$q] = $answers[$normalized_q];
+                                }
+                            }
+                        }
+                    }
+
+                    return $result;
+                };
+
+                $mi_strain = $extract_strain_answers($mi['answers'] ?? [], $all_strain_questions['mi'] ?? []);
+                $cdt_strain = $extract_strain_answers($cdt['answers'] ?? [], $all_strain_questions['cdt'] ?? []);
+                $bartle_strain = $extract_strain_answers($bartle['answers'] ?? [], $all_strain_questions['bartle'] ?? []);
+
+                $detailed_answers = [
+                    'rumination' => [
+                        'MI' => $mi_strain['si-rumination'],
+                        'CDT' => $cdt_strain['si-rumination'],
+                        'Bartle' => $bartle_strain['si-rumination']
+                    ],
+                    'avoidance' => [
+                        'MI' => $mi_strain['si-avoidance'],
+                        'CDT' => $cdt_strain['si-avoidance'],
+                        'Bartle' => $bartle_strain['si-avoidance']
+                    ],
+                    'flood' => [
+                        'MI' => $mi_strain['si-emotional-flood'],
+                        'CDT' => $cdt_strain['si-emotional-flood'],
+                        'Bartle' => $bartle_strain['si-emotional-flood']
+                    ]
+                ];
+
+                $response_data = [
+                    'message' => 'Report generated successfully!',
+                    'analysis' => $updated_analysis,
+                    'strain_results' => $strain_results,
+                    'strain_breakdown' => $strain_breakdown,
+                    'detailed_answers' => $detailed_answers,
+                    'name' => $user_info ? $user_info->display_name : 'Employee',
+                    'id' => $user_id,
+                    'debug_status' => 'success'
+                ];
+
+                wp_send_json_success($response_data);
+            } else {
+                wp_send_json_error(['message' => 'Failed to generate report. Please try again.']);
+            }
+        } catch (Throwable $e) {
+            error_log('MC AI Generate Report Fatal Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            wp_send_json_error(['message' => 'Critical error generating report.', 'debug' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * AJAX: View existing analysis report (without regenerating)
+     * Loads cached analysis and computes strain breakdown/detailed_answers on-demand
+     */
+    public function ajax_view_analysis_report()
+    {
+        // Check user is logged in and has permission
+        if (!current_user_can(MC_Roles::CAP_MANAGE_EMPLOYEES)) {
+            wp_send_json_error(['message' => 'Not authorized'], 403);
         }
 
-        // Generate the analysis
-        $success = self::generate_analysis_on_completion($user_id);
+        try {
+            $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
 
-        if ($success) {
-            // Fetch the updated analysis to return to the frontend
-            $updated_analysis = get_user_meta($user_id, 'mc_assessment_analysis', true);
+            if (!$user_id) {
+                wp_send_json_error(['message' => 'Invalid user ID'], 400);
+            }
+
+            // Fetch the cached analysis
+            $analysis = get_user_meta($user_id, 'mc_assessment_analysis', true);
             $strain_results = get_user_meta($user_id, 'strain_index_results', true);
 
-            // Add employee name for the modal
+            if (empty($analysis)) {
+                wp_send_json_error(['message' => 'No analysis found. Please generate a report first.'], 404);
+            }
+
+            // Fix: Calculate Strain Index if missing
+            if (empty($strain_results) && class_exists('MC_Strain_Index_Scorer')) {
+                $strain_results = MC_Strain_Index_Scorer::calculate_from_user_meta($user_id);
+            }
+
+            // Add employee name
             $user_info = get_userdata($user_id);
+
+            // Calculate Breakdown for Accordion
+            $mi = get_user_meta($user_id, 'miq_quiz_results', true);
+            $cdt = get_user_meta($user_id, 'cdt_quiz_results', true);
+            $bartle = get_user_meta($user_id, 'bartle_quiz_results', true);
+
+            // Ensure these are arrays for safe access
+            if (!is_array($mi))
+                $mi = [];
+            if (!is_array($cdt))
+                $cdt = [];
+            if (!is_array($bartle))
+                $bartle = [];
+
+            $get_val = function ($arr, $key) {
+                if (!is_array($arr))
+                    return 0;
+                if (isset($arr['part1Scores'][$key]))
+                    return intval($arr['part1Scores'][$key]);
+                if (isset($arr['scores'][$key]))
+                    return intval($arr['scores'][$key]);
+                return 0;
+            };
+
+            $strain_breakdown = [
+                'rumination' => [
+                    'MI' => $get_val($mi, 'si-rumination'),
+                    'CDT' => $get_val($cdt, 'si-rumination'),
+                    'Bartle' => $get_val($bartle, 'si-rumination')
+                ],
+                'avoidance' => [
+                    'MI' => $get_val($mi, 'si-avoidance'),
+                    'CDT' => $get_val($cdt, 'si-avoidance'),
+                    'Bartle' => $get_val($bartle, 'si-avoidance')
+                ],
+                'flood' => [
+                    'MI' => $get_val($mi, 'si-emotional-flood'),
+                    'CDT' => $get_val($cdt, 'si-emotional-flood'),
+                    'Bartle' => $get_val($bartle, 'si-emotional-flood')
+                ]
+            ];
+
+            // Load strain questions and compute detailed answers ON-DEMAND
+            // Wrapped in try-catch to prevent fatal errors from include conflicts
+            $all_strain_questions = [];
+
+            // Load MI questions
+            $mi_quiz_path = MC_QUIZ_PLATFORM_PATH . 'quizzes/mi-quiz/mi-questions.php';
+            if (file_exists($mi_quiz_path)) {
+                include $mi_quiz_path;
+                if (isset($mi_questions['adult'])) {
+                    $all_strain_questions['mi'] = [];
+                    foreach (['si-rumination', 'si-avoidance', 'si-emotional-flood'] as $cat) {
+                        $all_strain_questions['mi'][$cat] = $mi_questions['adult'][$cat] ?? [];
+                    }
+                }
+            }
+
+            // Load CDT questions  
+            $cdt_quiz_path = MC_QUIZ_PLATFORM_PATH . 'quizzes/cdt-quiz/questions.php';
+            if (file_exists($cdt_quiz_path)) {
+                include $cdt_quiz_path;
+                if (isset($cdt_questions_base)) {
+                    $all_strain_questions['cdt'] = [];
+                    foreach (['si-rumination', 'si-avoidance', 'si-emotional-flood'] as $cat) {
+                        $qs = [];
+                        foreach ($cdt_questions_base[$cat] ?? [] as $qItem) {
+                            if (isset($qItem['text']))
+                                $qs[] = $qItem['text'];
+                        }
+                        $all_strain_questions['cdt'][$cat] = $qs;
+                    }
+                }
+            }
+
+            // Load Bartle questions
+            $bartle_quiz_path = MC_QUIZ_PLATFORM_PATH . 'quizzes/bartle-quiz/questions.php';
+            if (file_exists($bartle_quiz_path)) {
+                include $bartle_quiz_path;
+                if (isset($bartle_questions['adult'])) {
+                    $all_strain_questions['bartle'] = [];
+                    foreach (['si-rumination', 'si-avoidance', 'si-emotional-flood'] as $cat) {
+                        $qs = [];
+                        foreach ($bartle_questions['adult'][$cat] ?? [] as $qItem) {
+                            if (isset($qItem['text']))
+                                $qs[] = $qItem['text'];
+                        }
+                        $all_strain_questions['bartle'][$cat] = $qs;
+                    }
+                }
+            }
+
+            // Simple function to match answers to strain questions
+            $extract_strain_answers = function ($answers, $strain_questions) {
+                $result = [
+                    'si-rumination' => [],
+                    'si-avoidance' => [],
+                    'si-emotional-flood' => []
+                ];
+
+                if (empty($answers) || !is_array($answers) || empty($strain_questions)) {
+                    return $result;
+                }
+
+                foreach ($strain_questions as $cat => $questions) {
+                    foreach ($questions as $q) {
+                        if (!is_string($q))
+                            continue;
+
+                        // Try the original question text first
+                        if (isset($answers[$q])) {
+                            $result[$cat][$q] = $answers[$q];
+                        } else {
+                            // Try with stripslashes (normalizes escaped quotes)
+                            $normalized_q = stripslashes($q);
+                            if (isset($answers[$normalized_q])) {
+                                $result[$cat][$q] = $answers[$normalized_q];
+                            }
+                        }
+                    }
+                }
+
+                return $result;
+            };
+
+            $mi_strain = $extract_strain_answers($mi['answers'] ?? [], $all_strain_questions['mi'] ?? []);
+            $cdt_strain = $extract_strain_answers($cdt['answers'] ?? [], $all_strain_questions['cdt'] ?? []);
+            $bartle_strain = $extract_strain_answers($bartle['answers'] ?? [], $all_strain_questions['bartle'] ?? []);
+
+            $detailed_answers = [
+                'rumination' => [
+                    'MI' => $mi_strain['si-rumination'],
+                    'CDT' => $cdt_strain['si-rumination'],
+                    'Bartle' => $bartle_strain['si-rumination']
+                ],
+                'avoidance' => [
+                    'MI' => $mi_strain['si-avoidance'],
+                    'CDT' => $cdt_strain['si-avoidance'],
+                    'Bartle' => $bartle_strain['si-avoidance']
+                ],
+                'flood' => [
+                    'MI' => $mi_strain['si-emotional-flood'],
+                    'CDT' => $cdt_strain['si-emotional-flood'],
+                    'Bartle' => $bartle_strain['si-emotional-flood']
+                ]
+            ];
+
             $response_data = [
-                'message' => 'Report generated successfully!',
-                'analysis' => $updated_analysis,
+                'message' => 'Report loaded successfully!',
+                'analysis' => $analysis,
                 'strain_results' => $strain_results,
+                'strain_breakdown' => $strain_breakdown,
+                'detailed_answers' => $detailed_answers,
                 'name' => $user_info ? $user_info->display_name : 'Employee',
                 'id' => $user_id
             ];
 
             wp_send_json_success($response_data);
-        } else {
-            wp_send_json_error(['message' => 'Failed to generate report. Please try again.']);
+        } catch (Throwable $e) {
+            error_log('MC AI View Report Fatal Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            wp_send_json_error(['message' => 'Critical error viewing report.', 'debug' => $e->getMessage()]);
         }
     }
 }

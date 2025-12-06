@@ -9,7 +9,7 @@
     inter = $id('mi-quiz-intermission'), resultsDiv = $id('mi-quiz-results'),
     devTools = $id('mi-dev-tools'), autoBtn = $id('mi-autofill-run');
 
-  let age = 'adult', top3 = [], detailed = {}, top5 = [], bottom3 = [], part1Scores = {};
+  let age = 'adult', top3 = [], detailed = {}, top5 = [], bottom3 = [], part1Scores = {}, answers = {};
 
   function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
 
@@ -209,7 +209,11 @@
       const scores = {}; Object.keys(CATS).forEach(k => scores[k] = 0);
       steps.forEach(s => {
         const cat = s.getAttribute('data-cat'), v = s.querySelector('input[type=radio]:checked')?.value;
-        if (cat && v) scores[cat] = (scores[cat] || 0) + parseInt(v, 10);
+        const text = s.querySelector('.mi-quiz-question-text')?.textContent || '';
+        if (cat && v) {
+          scores[cat] = (scores[cat] || 0) + parseInt(v, 10);
+          answers[text] = parseInt(v, 10);
+        }
       });
       part1Scores = scores;
       top3 = Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k);
@@ -330,7 +334,11 @@
     (p2Steps || []).forEach(s => {
       const cat = s.getAttribute('data-cat'), sub = s.getAttribute('data-subcat');
       const v = s.querySelector('input[type=radio]:checked')?.value;
-      if (v && detailed[cat] && sub in detailed[cat]) detailed[cat][sub] += parseInt(v, 10);
+      const text = s.querySelector('.mi-quiz-question-text')?.textContent || '';
+      if (v && detailed[cat] && sub in detailed[cat]) {
+        detailed[cat][sub] += parseInt(v, 10);
+        answers[text] = parseInt(v, 10);
+      }
     });
 
     const subs = [];
@@ -340,7 +348,7 @@
     subs.sort((a, b) => b.score - a.score);
     top5 = subs.slice(0, 5); bottom3 = subs.slice(-3).reverse();
 
-    const resultsData = { detailed, top5, bottom3, top3, age, part1Scores };
+    const resultsData = { detailed, top5, bottom3, top3, age, part1Scores, answers };
 
     if (!isLoggedIn) {
       const emailHtml = generateResultsHtml();

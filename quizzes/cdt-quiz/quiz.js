@@ -132,7 +132,8 @@
         sortedScores: [],
         ageGroup: 'adult',
         autoFilled: false,
-        reviewPrompted: false
+        reviewPrompted: false,
+        answers: {}
     };
 
     // --- Utility Functions ---
@@ -778,7 +779,6 @@
                 baseScore = isReverse ? (6 - rawVal) : rawVal;
             }
 
-            // Apply confidence multiplier to the first scenario-based question per category
             if (type === 'scenario' && !appliedScenarioMultiplier[cat]) {
                 const mult = confidenceByCat[cat] || 1.0;
                 baseScore = baseScore * mult;
@@ -786,6 +786,14 @@
             }
 
             scores[cat] += baseScore;
+
+            // Capture answer
+            const text = s.querySelector('.cdt-quiz-question-text')?.textContent || ('Question ' + (steps.indexOf(s) + 1));
+            // Store selected value or score. For consistency with MI, let's store the raw value provided by the user.
+            // But scenarios/forced have data-score. Let's store the mapped score if available, or raw value.
+            // Actually, for display purposes "Strongly Agree" (5) is better than "1".
+            // Let's store the value the user selected (1-5) or the index for scenarios.
+            quizState.answers[text] = rawVal;
         });
 
         // Compute max per category based on counts and multiplier max for first scenario
