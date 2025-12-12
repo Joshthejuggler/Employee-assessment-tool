@@ -1339,19 +1339,19 @@ class MC_Landing_Pages
                             </ul>
                         </div>
                         <div class="mc-assessment-card">
-                            <div class="mc-card-icon mc-icon-johari">
+                            <div class="mc-card-icon mc-icon-strain">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                                    <line x1="12" y1="3" x2="12" y2="21"></line>
+                                    <path d="M12 2v2"></path>
+                                    <path d="M12 12l3-3"></path>
+                                    <path d="M2.05 13a10 10 0 0 1 19.9 0"></path>
                                 </svg>
                             </div>
-                            <h3>Johari Window</h3>
-                            <p class="mc-card-description">See yourself through others' eyes</p>
+                            <h3>Strain Index</h3>
+                            <p class="mc-card-description">Understand your emotional bandwidth</p>
                             <ul class="mc-card-benefits">
-                                <li>Uncover blind spots in how you're perceived</li>
-                                <li>Improve collaboration and relationships</li>
-                                <li>Build stronger trust with your team</li>
+                                <li>Monitor potential for burnout</li>
+                                <li>Manage your energy effectively</li>
+                                <li>Proactively handle workplace stress</li>
                             </ul>
                         </div>
                     </div>
