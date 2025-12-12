@@ -2,7 +2,7 @@
 /*
 Plugin Name: Micro-Coach Quiz Platform
 Description: A modular platform for hosting various quizzes with AI-powered insights and advanced caching.
-Version: 1.2.1
+Version: 1.3.4
 Author: Your Name
 License: GPL2
 Requires at least: 5.0
@@ -21,7 +21,7 @@ if (!defined('ABSPATH'))
 
 // Define constants
 define('MC_QUIZ_PLATFORM_PATH', plugin_dir_path(__FILE__));
-define('MC_QUIZ_PLATFORM_VERSION', '1.3.3');
+define('MC_QUIZ_PLATFORM_VERSION', '1.3.4');
 define('MC_QUIZ_PLATFORM_DB_VERSION', '1.2');
 
 // Include the Composer autoloader for PHP libraries like Dompdf.
