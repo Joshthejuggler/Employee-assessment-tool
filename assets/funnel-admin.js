@@ -151,8 +151,8 @@
             steps: ['mi-quiz', 'cdt-quiz', 'bartle-quiz'],
             titles: {
                 'mi-quiz': 'Multiple Intelligences Assessment',
-                'cdt-quiz': 'Cognitive Dissonance Tolerance Quiz',
-                'bartle-quiz': 'Player Type Discovery'
+                'cdt-quiz': 'Growth Strengths Assessment',
+                'bartle-quiz': 'Core Motivation Assessment'
             },
             placeholder: {
                 enabled: false,

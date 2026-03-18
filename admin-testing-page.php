@@ -350,6 +350,16 @@ function mc_render_admin_testing_page()
             color: #1d2327;
         }
 
+        .mc-action-btn.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            cursor: not-allowed;
+            filter: grayscale(100%);
+            background: #f6f7f7;
+            border-color: #c3c4c7;
+            color: #a7aaad;
+        }
+
         .mc-action-btn .dashicons {
             font-size: 16px;
             width: 16px;
@@ -755,751 +765,7 @@ function mc_render_admin_testing_page()
             transition: all 0.3s ease;
         }
 
-        /* Modal Styles */
-        .mc-modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0, 0, 0, 0.4);
-        }
-
-        .mc-modal-content {
-            background-color: #fefefe;
-            margin: 10% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 90%;
-            max-width: 500px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-
-
-        .spin {
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        :root {
-            --mc-primary: #2563eb;
-            --mc-secondary: #0f172a;
-            --mc-success: #16a34a;
-            --mc-warning: #ca8a04;
-            --mc-danger: #dc2626;
-            --mc-bg: #f8fafc;
-            --mc-surface: #ffffff;
-            --mc-text-main: #334155;
-            --mc-text-muted: #64748b;
-        }
-
-        /* .mc-container {
-                                                                                                                                                                    max-width: 1200px;
-                                                                                                                                                                    margin: 0 auto;
-                                                                                                                                                                    padding: 2rem;
-                                                                                                                                                                    font-family: 'Inter', system-ui, sans-serif;
-                                                                                                                                                                    color: var(--mc-text-main);
-                                                                                                                                                                } */
-
-        /* Deep Report Modal Override */
-        .mc-deep-report-modal {
-            max-width: 1000px !important;
-            /* Wider for the new layout */
-            background: #f8fafc;
-            /* Light grey bg for whole modal */
-            border-radius: 12px;
-            padding: 0;
-            /* Reset padding, we'll handle inside */
-            border: none;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        }
-
-        .mc-deep-report {
-            display: block;
-            height: 85vh;
-            overflow-y: auto;
-        }
-
-        /* HERO SECTION */
-        .mc-report-hero {
-            background: #fff;
-            padding: 2rem 3rem;
-            border-bottom: 1px solid #e2e8f0;
-            /* position: sticky;
-                                                                                                                                                                        top: 0;
-                                                                                                                                                                        z-index: 10;
-                                                                                                                                                                        background: rgba(255,255,255,0.95);
-                                                                                                                                                                        backdrop-filter: blur(8px); */
-        }
-
-        .mc-report-header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .mc-hero-main-stack {
-            display: grid;
-            gap: 2rem;
-        }
-
-        /* SUITABILITY SCORE CARD (HERO) */
-        .mc-hero-score-card {
-            /* background: #f0f9ff; */
-            /* border: 1px solid #bae6fd; */
-            border-radius: 16px;
-            padding: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            min-width: 300px;
-        }
-
-        .mc-hero-score-circle {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: #2563eb;
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
-        }
-
-        .mc-hero-score-val {
-            font-size: 1.8rem;
-            font-weight: 800;
-            line-height: 1;
-        }
-
-        .mc-hero-score-label {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            opacity: 0.9;
-        }
-
-        /* LEADERSHIP STRIP */
-        .mc-hero-leadership-strip {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 1.5rem;
-            flex: 1;
-        }
-
-        .mc-leadership-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .mc-leadership-header h4 {
-            margin: 0;
-            font-size: 0.9rem;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        /* SPECTRUM */
-        .mc-leadership-spectrum {
-            position: relative;
-            width: 60%;
-        }
-
-        .mc-spectrum-track {
-            display: flex;
-            height: 8px;
-            border-radius: 4px;
-            background: #e2e8f0;
-            overflow: hidden;
-        }
-
-        .mc-spectrum-segment {
-            flex: 1;
-            /* background: #cbd5e1; */
-            font-size: 0;
-            /* Hide text in track */
-            border-right: 1px solid #fff;
-        }
-
-        .mc-spectrum-segment:last-child {
-            border-right: none;
-        }
-
-        /* Active State via JS Class */
-        .mc-spectrum-segment.active {
-            /* background: #2563eb; */
-            /* box-shadow: 0 0 10px rgba(37,99,235,0.5); */
-        }
-
-        /* Colors for spectrum */
-        .mc-spectrum-segment[data-level="individual"] {
-            background-color: #94a3b8;
-            opacity: 0.3;
-        }
-
-        .mc-spectrum-segment[data-level="individual"].active {
-            opacity: 1;
-        }
-
-        .mc-spectrum-segment[data-level="emerging"] {
-            background-color: #60a5fa;
-            opacity: 0.3;
-        }
-
-        .mc-spectrum-segment[data-level="emerging"].active {
-            opacity: 1;
-        }
-
-        .mc-spectrum-segment[data-level="developing"] {
-            background-color: #3b82f6;
-            opacity: 0.3;
-        }
-
-        .mc-spectrum-segment[data-level="developing"].active {
-            opacity: 1;
-        }
-
-        .mc-spectrum-segment[data-level="strong"] {
-            background-color: #2563eb;
-            opacity: 0.3;
-        }
-
-        .mc-spectrum-segment[data-level="strong"].active {
-            opacity: 1;
-        }
-
-        .mc-spectrum-segment[data-level="rockstar"] {
-            background-color: #4f46e5;
-            opacity: 0.3;
-        }
-
-        .mc-spectrum-segment[data-level="rockstar"].active {
-            opacity: 1;
-        }
-
-
-        /* HERO INSIGHTS (3 Col) */
-        .mc-hero-insights {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
-        }
-
-        .mc-insight-box h4 {
-            margin: 0 0 1rem 0;
-            font-size: 0.85rem;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* PILL LIST (Used in Hero) */
-        .mc-pill-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .mc-pill-list li {
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: #334155;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        }
-
-        .mc-insight-box.strengths .mc-pill-list li {
-            border-color: #bbf7d0;
-            background: #f0fdf4;
-            color: #166534;
-        }
-
-        .mc-insight-box.blindspots .mc-pill-list li {
-            border-color: #fecaca;
-            background: #fef2f2;
-            color: #991b1b;
-        }
-
-        /* MAIN BODY GRID */
-        .mc-report-body {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            /* Main content vs Sidebar (2:1) */
-            gap: 2rem;
-            padding: 2rem 3rem;
-            overflow-y: visible;
-            background: #f8fafc;
-        }
-
-        /* SECTION CARDS */
-        .mc-section-card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e2e8f0;
-        }
-
-        .mc-section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        .mc-section-header h3 {
-            margin: 0;
-            font-size: 1.25rem;
-            color: #0f172a;
-            font-weight: 700;
-        }
-
-        .mc-section-icon {
-            font-size: 1.5rem;
-            opacity: 0.8;
-            background: #f1f5f9;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-        }
-
-
-        /* PLAYBOOK GRID */
-        .mc-playbook-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-        }
-
-        .mc-playbook-col h4 {
-            margin: 0 0 1rem 0;
-            font-size: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #64748b;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .mc-playbook-col.mc-do h4 {
-            color: #166534;
-        }
-
-        .mc-playbook-col.mc-do h4::before {
-            content: "✓";
-            background: #dcfce7;
-            color: #166534;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-        }
-
-        .mc-playbook-col.mc-avoid h4 {
-            color: #991b1b;
-        }
-
-        .mc-playbook-col.mc-avoid h4::before {
-            content: "✕";
-            background: #fee2e2;
-            color: #991b1b;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-        }
-
-        .mc-playbook-col ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .mc-playbook-col ul li {
-            padding: 8px 0;
-            border-bottom: 1px dashed #e2e8f0;
-            color: #334155;
-        }
-
-        .mc-playbook-col ul li:last-child {
-            border-bottom: none;
-        }
-
-        .mc-playbook-footer {
-            margin-top: 1.5rem;
-            padding-top: 1rem;
-            border-top: 1px solid #f1f5f9;
-            font-size: 0.9rem;
-            color: #64748b;
-        }
-
-
-        /* MOTIVATION GRID */
-        .mc-grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-        }
-
-        .mc-check-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .mc-check-list li {
-            padding-left: 1.5rem;
-            position: relative;
-            margin-bottom: 0.5rem;
-            color: #334155;
-        }
-
-        .mc-check-list li::before {
-            content: "⚡";
-            position: absolute;
-            left: 0;
-            color: #fbbf24;
-        }
-
-        .mc-cross-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .mc-cross-list li {
-            padding-left: 1.5rem;
-            position: relative;
-            margin-bottom: 0.5rem;
-            color: #334155;
-        }
-
-        .mc-cross-list li::before {
-            content: "❄️";
-            position: absolute;
-            left: 0;
-            color: #94a3b8;
-        }
-
-        .mc-divider {
-            height: 1px;
-            background: #f1f5f9;
-            margin: 2rem 0;
-        }
-
-        .mc-work-style-box p {
-            font-size: 1.1rem;
-            color: #0f172a;
-            margin-bottom: 1.5rem;
-        }
-
-        .mc-sm-list {
-            list-style: none;
-            padding: 0;
-            margin-top: 0.5rem;
-        }
-
-        .mc-sm-list li {
-            font-size: 0.9rem;
-            color: #64748b;
-            margin-bottom: 4px;
-            padding-left: 10px;
-            border-left: 2px solid #e2e8f0;
-        }
-
-
-        /* COACHING CARDS */
-        .mc-cards-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-        }
-
-        .mc-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 1.5rem;
-        }
-
-        .mc-coaching-card h4 {
-            margin: 0 0 0.5rem 0;
-            color: #2563eb;
-            font-size: 1rem;
-        }
-
-        .mc-card-rationale {
-            font-size: 0.9rem;
-            color: #64748b;
-            margin-bottom: 1rem;
-            line-height: 1.5;
-        }
-
-        .mc-card-example {
-            background: #fff;
-            padding: 0.75rem;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            border-left: 3px solid #fbbf24;
-            color: #334155;
-        }
-
-
-        /* GROWTH CARDS */
-        .mc-growth-card {
-            border-left: 4px solid #8b5cf6;
-        }
-
-        .mc-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-        }
-
-        .mc-growth-card h4 {
-            margin: 0;
-            color: #0f172a;
-            font-weight: 600;
-        }
-
-        .mc-card-meta {
-            margin-top: 1rem;
-            font-size: 0.85rem;
-            color: #94a3b8;
-            font-style: italic;
-        }
-
-
-        /* SIDEBAR: MANAGER FAST GUIDE */
-        .mc-fast-guide {
-            background: #1e293b;
-            color: #fff;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-
-        .mc-guide-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .mc-guide-header h3 {
-            margin: 0;
-            color: #fff;
-            font-size: 1.1rem;
-            letter-spacing: 0.05em;
-        }
-
-        .mc-guide-header small {
-            color: #94a3b8;
-            font-size: 0.75rem;
-            cursor: pointer;
-        }
-
-        .mc-guide-item {
-            margin-bottom: 1.5rem;
-        }
-
-        .mc-guide-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .mc-guide-item strong {
-            display: block;
-            color: #94a3b8;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            margin-bottom: 0.5rem;
-            letter-spacing: 0.05em;
-        }
-
-        .mc-guide-item ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .mc-guide-item ul li {
-            margin-bottom: 4px;
-            font-size: 0.9rem;
-            color: #e2e8f0;
-        }
-
-        .mc-guide-item p {
-            margin: 0;
-            font-size: 0.9rem;
-            color: #e2e8f0;
-        }
-
-        .mc-meta-box {
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 1.5rem;
-        }
-
-        .mc-meta-box h4 {
-            margin: 0 0 1rem 0;
-            color: #0f172a;
-        }
-
-        .mc-meta-box p {
-            margin: 0 0 0.5rem 0;
-            font-size: 0.9rem;
-            color: #64748b;
-        }
-
-        /* Utilities */
-        .mc-text-red {
-            color: #dc2626;
-        }
-
-        .mc-text-green {
-            color: #16a34a;
-        }
-
-        .mc-text-blue {
-            color: #2563eb;
-        }
-
-        .mc-required {
-            color: #dc2626;
-            margin-left: 2px;
-        }
-
-        .mc-btn-sm {
-            font-size: 0.8rem;
-            padding: 4px 10px;
-            height: auto;
-        }
-
-        .mc-form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        .mc-btn-secondary {
-            background: white;
-            border: 1px solid #ccc;
-            color: #333;
-        }
-
-        .mc-btn-secondary:hover {
-            background: #f8f8f8;
-            border-color: #999;
-            color: #000;
-        }
-
-        /* Button styles from employer dashboard */
-        .mc-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-            border: 1px solid transparent;
-        }
-
-        .mc-btn-primary {
-            background: #2563eb;
-            color: white;
-        }
-
-        .mc-btn-primary:hover {
-            background: #1d4ed8;
-        }
-
-        .mc-btn-secondary {
-            background: white;
-            border: 1px solid #e2e8f0;
-            color: #64748b;
-        }
-
-        .mc-btn-secondary:hover {
-            background: #f8fafc;
-            border-color: #cbd5e1;
-            color: #475569;
-        }
-
-        .mc-report-list li {
-            padding: 8px 12px;
-            background: #fff;
-            margin-bottom: 8px;
-            border-radius: 6px;
-            border-left: 3px solid #10b981;
-        }
-
-        .mc-report-weaknesses li {
-            border-left-color: #f59e0b;
-        }
-
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .spin {
-            animation: spin 1s linear infinite;
-        }
+        /* Modal Styles removed and loaded from employer-dashboard.css */
     </style>
 
     <div class="wrap mc-admin-testing-page">
@@ -1646,8 +912,18 @@ function mc_render_admin_testing_page()
                         </tr>
                     <?php else: ?>
                         <?php foreach ($recent_users as $user):
-                            $roles = $user->roles;
-                            $role = !empty($roles) ? $roles[0] : 'none';
+                            $roles = (array) $user->roles;
+                            $role = 'none';
+
+                            // Prioritize our custom roles for display
+                            if (in_array(MC_Roles::ROLE_EMPLOYER, $roles)) {
+                                $role = MC_Roles::ROLE_EMPLOYER;
+                            } elseif (in_array(MC_Roles::ROLE_EMPLOYEE, $roles)) {
+                                $role = MC_Roles::ROLE_EMPLOYEE;
+                            } else {
+                                $role = !empty($roles) ? $roles[0] : 'none';
+                            }
+
                             $company = '';
                             if ($role === MC_Roles::ROLE_EMPLOYER) {
                                 $company = get_user_meta($user->ID, 'mc_company_name', true) ?: '-';
@@ -1664,9 +940,11 @@ function mc_render_admin_testing_page()
                             $switch_url = class_exists('MC_User_Switcher') ? MC_User_Switcher::get_switch_url($user->ID) : add_query_arg(['action' => 'mc_switch_user', 'user_id' => $user->ID, '_wpnonce' => wp_create_nonce('mc_switch_user_' . $user->ID)], admin_url('admin.php?page=admin-testing-page'));
 
                             $completed_quizzes = 0;
-                            if (class_exists('MC_Funnel')) {
-                                $results = MC_Funnel::get_all_assessment_results($user->ID);
-                                $completed_quizzes = count($results);
+                            $quiz_metas = ['miq_quiz_results', 'cdt_quiz_results', 'bartle_quiz_results'];
+                            foreach ($quiz_metas as $meta_key) {
+                                if (get_user_meta($user->ID, $meta_key, true)) {
+                                    $completed_quizzes++;
+                                }
                             }
 
                             $analysis = get_user_meta($user->ID, 'mc_assessment_analysis', true);
@@ -1731,31 +1009,63 @@ function mc_render_admin_testing_page()
                                 </td>
                                 <td>
                                     <div class="mc-row-actions">
+                                        <!-- Switch User (Always Active) -->
                                         <a href="<?php echo esc_url($switch_url); ?>" class="mc-action-btn mc-btn-switch"
                                             title="Switch To User">
                                             <span class="dashicons dashicons-migrate"></span>
                                         </a>
+
+                                        <!-- Add Test Data (Only for Employees) -->
                                         <?php if ($role === MC_Roles::ROLE_EMPLOYEE): ?>
                                             <button class="mc-action-btn mc-btn-test-data"
                                                 onclick="openAddTestDataModal(<?php echo $user->ID; ?>, '<?php echo esc_js($user->display_name); ?>')"
                                                 title="Add Test Data">
                                                 <span class="dashicons dashicons-plus-alt"></span>
                                             </button>
+                                        <?php else: ?>
+                                            <button class="mc-action-btn disabled" title="Add Test Data (Employees Only)">
+                                                <span class="dashicons dashicons-plus-alt"></span>
+                                            </button>
                                         <?php endif; ?>
+
+                                        <!-- Report Actions -->
                                         <?php if ($completed_quizzes > 0): ?>
                                             <?php if ($has_analysis): ?>
+                                                <!-- View Report -->
                                                 <button class="mc-action-btn mc-btn-report"
                                                     onclick="viewAnalysisReport(<?php echo $user->ID; ?>, this)" title="View Report">
                                                     <span class="dashicons dashicons-media-document"></span>
                                                 </button>
+                                                <!-- Strain Details -->
+                                                <button class="mc-action-btn"
+                                                    style="color: #ea580c; border-color: #fdba74; background: #fff7ed;"
+                                                    onclick="viewStrainDetails(<?php echo $user->ID; ?>, this)" title="View Strain Details">
+                                                    <span class="dashicons dashicons-chart-bar"></span>
+                                                </button>
                                             <?php else: ?>
+                                                <!-- Generate Report -->
                                                 <button class="mc-action-btn mc-btn-generate"
                                                     onclick="generateAnalysisReport(<?php echo $user->ID; ?>, this)"
                                                     title="Generate Report">
                                                     <span class="dashicons dashicons-media-document"></span>
                                                 </button>
+                                                <!-- Strain Placeholder -->
+                                                <button class="mc-action-btn disabled" title="Stain Details (Report Required)">
+                                                    <span class="dashicons dashicons-chart-bar"></span>
+                                                </button>
                                             <?php endif; ?>
+                                        <?php else: ?>
+                                            <!-- No Report Available -->
+                                            <button class="mc-action-btn disabled" title="Generate Report (Quizzes Incomplete)">
+                                                <span class="dashicons dashicons-media-document"></span>
+                                            </button>
+                                            <!-- Strain Placeholder -->
+                                            <button class="mc-action-btn disabled" title="Strain Details (Report Required)">
+                                                <span class="dashicons dashicons-chart-bar"></span>
+                                            </button>
                                         <?php endif; ?>
+
+                                        <!-- Delete User (Always Active) -->
                                         <a href="#" class="mc-action-btn mc-btn-delete"
                                             onclick="deleteTestUser(<?php echo esc_js($user->ID); ?>, '<?php echo esc_js($user->user_email); ?>'); return false;"
                                             title="Delete User">
@@ -1789,395 +1099,7 @@ function mc_render_admin_testing_page()
     </div>
 
     <!-- Analysis Modal (Copied from Employer Dashboard) -->
-    <div id="mc-analysis-modal" class="mc-modal">
-        <div class="mc-modal-content mc-deep-report-modal">
-
-            <div id="mc-report-loading" style="display: none; text-align: center; padding: 40px; position: relative;">
-                <span class="mc-close-modal" onclick="closeAnalysisModal()"
-                    style="position: absolute; top: 10px; right: 10px;">&times;</span>
-                <div class="mc-spinner"></div>
-                <p>Generating deep analysis... this may take a minute.</p>
-            </div>
-
-            <div id="mc-report-content" class="mc-deep-report">
-                <!-- Test Data Metadata (Admin Debug) -->
-                <div id="mc-test-metadata-container"
-                    style="display:none; background:#fffbeb; border:1px solid #fcd34d; padding:12px 20px; font-size:13px; color:#92400e; margin-bottom: 20px; border-radius: 6px;">
-                    <div style="display:flex; align-items:flex-start; gap:8px;">
-                        <span style="font-size:16px;">🛠️</span>
-                        <div>
-                            <strong>TEST DATA GENERATED:</strong> <span id="mc-test-metadata-text"></span>
-                        </div>
-                    </div>
-                </div>
-                <!-- Hero Section -->
-                <div class="mc-report-hero">
-                    <div class="mc-report-header-row"
-                        style="display: flex; justify-content: space-between; align-items: flex-start; padding-top: 0.5rem;">
-                        <div class="mc-header-left">
-                            <h2
-                                style="margin: 0; font-size: 2rem; font-weight: 800; color: #0f172a; line-height: 1.2; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-                                <span id="mc-analysis-company"
-                                    style="font-size: 1.5rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;"></span>
-                                <span style="font-size: 1.5rem; color: #cbd5e1; font-weight: 400;">—</span>
-                                <span id="mc-analysis-name" style="color: #0f172a;">Employee Name</span>
-                            </h2>
-                            <div style="margin-top: 0.5rem;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span id="mc-role-badge" style="font-size: 1rem; color: #475569; font-weight: 600;">Role
-                                        Analysis</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mc-header-right" style="display: flex; align-items: flex-start; gap: 12px;">
-                            <button onclick="downloadReportPDF(this)" class="mc-btn mc-btn-secondary mc-btn-sm"
-                                style="display: flex; align-items: center; gap: 6px; margin-top: 0;">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                                    stroke="currentColor" style="width: 16px; height: 16px;">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                </svg>
-                                PDF
-                            </button>
-                            <button id="mc-regenerate-report-btn" class="mc-btn mc-btn-secondary mc-btn-sm"
-                                style="display: flex; align-items: center; gap: 6px; margin-top: 0;">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                                    stroke="currentColor" style="width: 16px; height: 16px;">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                                </svg>
-                                Regenerate
-                            </button>
-                            <span class="mc-close-hero" onclick="closeAnalysisModal()"
-                                style="position: static; font-size: 1.5rem; cursor: pointer; color: #94a3b8; line-height: 1; padding: 4px; margin-left: 8px; margin-top: -4px;">&times;</span>
-                        </div>
-                    </div>
-                    <div
-                        style="padding-bottom: 1.5rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 1.5rem; margin-top: 0.5rem;">
-                        <p style="margin: 0; font-size: 0.9rem; color: #64748b; line-height: 1.5;">
-                            This report analyzes the employee's fit for the specific role based on their
-                            assessment results. It synthesizes data from Motivational, Personality, and
-                            Cognitive assessments to predict performance, cultural fit, and leadership
-                            potential.
-                        </p>
-                    </div>
-
-                    <!-- Company Culture Fit (Moved to Top) -->
-                    <div class="mc-hero-scores" style="width: 100%; margin-bottom: 2rem;">
-                        <div class="mc-score-card mc-fit-card"
-                            style="display: flex; flex-direction: column; gap: 1rem; padding: 2rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <div>
-                                    <h4
-                                        style="margin:0; font-size:1.1rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; font-weight: 600;">
-                                        Company Culture Fit</h4>
-                                </div>
-                                <div style="display:flex; align-items:baseline; gap:8px;">
-                                    <span id="mc-hero-fit-score"
-                                        style="font-size:3em; font-weight:800; color:var(--mc-primary); line-height:1;">--</span>
-                                    <span style="font-size:1.2em; color:#94a3b8; font-weight:500;">/ 100</span>
-                                </div>
-                            </div>
-                            <div style="border-top: 1px solid #f1f5f9; padding-top: 1rem;">
-                                <p id="mc-hero-fit-rationale"
-                                    style="margin: 0; font-size: 1.05rem; line-height: 1.6; color: #334155;">--</p>
-                            </div>
-                            <!-- Added Summary Section -->
-                            <div
-                                style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-left: 4px solid #2563eb; border-radius: 0 4px 4px 0;">
-                                <p id="mc-hero-context-summary" style="margin: 0; color: #334155; line-height: 1.6;">--</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Leadership Strip -->
-                    <div class="mc-hero-leadership-strip">
-                        <div class="mc-leadership-header">
-                            <h4>Leadership Potential</h4>
-                            <div class="mc-leadership-spectrum">
-                                <div class="mc-spectrum-track">
-                                    <div class="mc-spectrum-segment" data-level="individual">Individual</div>
-                                    <div class="mc-spectrum-segment" data-level="emerging">Emerging</div>
-                                    <div class="mc-spectrum-segment" data-level="developing">Developing</div>
-                                    <div class="mc-spectrum-segment" data-level="strong">Strong</div>
-                                    <div class="mc-spectrum-segment" data-level="rockstar">Rockstar Fit</div>
-                                </div>
-                                <div id="mc-spectrum-marker" class="mc-spectrum-marker"></div>
-                            </div>
-                        </div>
-                        <p id="mc-hero-leadership-summary">--</p>
-                    </div>
-
-                    <div class="mc-hero-main-stack" style="display: flex; flex-direction: column; gap: 2rem;">
-
-
-                        <!-- Insights Row (3 Columns) -->
-                        <div class="mc-hero-insights"
-                            style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
-                            <div class="mc-insight-box"
-                                style="background:#f8fafc; border-radius:12px; padding:1.5rem; border: 1px solid #e2e8f0;">
-                                <h4
-                                    style="margin-top:0; color:#475569; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:1rem; font-weight: 700;">
-                                    Top Strengths</h4>
-                                <ul id="mc-hero-strengths" class="mc-pill-list"></ul>
-                            </div>
-                            <div class="mc-insight-box"
-                                style="background:#fff1f2; border-radius:12px; padding:1.5rem; border: 1px solid #ffe4e6;">
-                                <h4
-                                    style="margin-top:0; color:#9f1239; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:1rem; font-weight: 700;">
-                                    Potential Blindspots</h4>
-                                <ul id="mc-hero-weaknesses" class="mc-pill-list"></ul>
-                            </div>
-                            <div class="mc-insight-box"
-                                style="background:#f0f9ff; border-radius:12px; padding:1.5rem; border: 1px solid #e0f2fe;">
-                                <h4
-                                    style="margin-top:0; color:#0369a1; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:1rem; font-weight: 700;">
-                                    Key Motivators</h4>
-                                <ul id="mc-hero-motivators" class="mc-pill-list"></ul>
-                            </div>
-                        </div>
-                    </div>
-                </div><!-- Main Content Grid -->
-                <div class="mc-report-body">
-                    <!-- Left Column: Guide & Coaching -->
-                    <div class="mc-report-main">
-
-                        <!-- Communication Playbook -->
-                        <div class="mc-section-card">
-                            <div class="mc-section-header">
-                                <h3>Communication Playbook</h3>
-                                <span class="mc-section-icon">💬</span>
-                            </div>
-                            <div class="mc-playbook-grid">
-                                <div class="mc-playbook-col mc-do">
-                                    <h4>Do This</h4>
-                                    <ul id="mc-comm-do"></ul>
-                                </div>
-                                <div class="mc-playbook-col mc-avoid">
-                                    <h4>Avoid This</h4>
-                                    <ul id="mc-comm-avoid"></ul>
-                                </div>
-                            </div>
-                            <div class="mc-playbook-footer">
-                                <strong>Preferred Format:</strong> <span id="mc-comm-format">--</span>
-                            </div>
-                        </div>
-
-                        <!-- Motivation & Work Style -->
-                        <div class="mc-section-card">
-                            <div class="mc-section-header">
-                                <h3>Motivation & Work Style</h3>
-                                <span class="mc-section-icon">⚡</span>
-                            </div>
-                            <div class="mc-grid-2">
-                                <div>
-                                    <h4>Energizers</h4>
-                                    <ul id="mc-motiv-energizers" class="mc-check-list"></ul>
-                                </div>
-                                <div>
-                                    <h4>Drainers</h4>
-                                    <ul id="mc-motiv-drainers" class="mc-cross-list"></ul>
-                                </div>
-                            </div>
-                            <div class="mc-divider"></div>
-                            <div class="mc-work-style-box">
-                                <p><strong>Work Style:</strong> <span id="mc-work-approach">--</span></p>
-                                <div class="mc-grid-2">
-                                    <div>
-                                        <small>Best When:</small>
-                                        <ul id="mc-work-best" class="mc-sm-list"></ul>
-                                    </div>
-                                    <div>
-                                        <small>Struggles When:</small>
-                                        <ul id="mc-work-struggle" class="mc-sm-list"></ul>
-                                    </div>
-                                </div>
-
-                            </div>
-                        </div>
-
-                        <!-- Strain Index Analysis -->
-                        <div class="mc-section-card" id="mc-strain-section" style="display:none;">
-                            <div class="mc-section-header">
-                                <h3>Strain Index Analysis</h3>
-                                <span class="mc-section-icon">🧠</span>
-                            </div>
-                            <div class="mc-strain-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                                <!-- Overall Score -->
-                                <div class="mc-strain-overall"
-                                    style="text-align: center; padding: 20px; background: #f8fafc; border-radius: 8px;">
-                                    <h4 style="margin: 0 0 15px 0; color: #64748b;">Overall Strain</h4>
-                                    <div class="mc-strain-gauge"
-                                        style="position: relative; width: 120px; height: 60px; margin: 0 auto; overflow: hidden;">
-                                        <div class="mc-gauge-bg"
-                                            style="width: 100%; height: 100%; background: #e2e8f0; border-top-left-radius: 60px; border-top-right-radius: 60px;">
-                                        </div>
-                                        <div class="mc-gauge-fill" id="mc-strain-gauge-fill"
-                                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #ef4444; border-top-left-radius: 60px; border-top-right-radius: 60px; transform-origin: bottom center; transform: rotate(-180deg); transition: transform 1s;">
-                                        </div>
-                                    </div>
-                                    <div id="mc-strain-overall-score"
-                                        style="font-size: 2em; font-weight: 800; color: #0f172a; margin-top: 5px;">
-                                        --</div>
-                                </div>
-                                <!-- Sub-Indices -->
-                                <div class="mc-strain-breakdown">
-                                    <div class="mc-strain-row" style="margin-bottom: 15px;">
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                            <span style="font-weight: 600; color: #475569;">Rumination</span>
-                                            <span id="mc-strain-rumination-val" style="font-weight: 700;">--</span>
-                                        </div>
-                                        <div
-                                            style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                            <div id="mc-strain-rumination-bar"
-                                                style="height: 100%; background: #3b82f6; width: 0%;">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="mc-strain-row" style="margin-bottom: 15px;">
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                            <span style="font-weight: 600; color: #475569;">Avoidance</span>
-                                            <span id="mc-strain-avoidance-val" style="font-weight: 700;">--</span>
-                                        </div>
-                                        <div
-                                            style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                            <div id="mc-strain-avoidance-bar"
-                                                style="height: 100%; background: #f59e0b; width: 0%;">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="mc-strain-row">
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                            <span style="font-weight: 600; color: #475569;">Emotional Flood</span>
-                                            <span id="mc-strain-flood-val" style="font-weight: 700;">--</span>
-                                        </div>
-                                        <div
-                                            style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                            <div id="mc-strain-flood-bar"
-                                                style="height: 100%; background: #ec4899; width: 0%;">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Strain Breakdown Accordion -->
-                        <details class="mc-strain-details" id="mc-strain-breakdown-accordion"
-                            style="margin-top: 20px; border-top: 1px solid #f1f5f9; padding-top: 15px;">
-                            <summary style="cursor: pointer; color: #64748b; font-weight: 600; font-size: 0.9em;">View Score
-                                Breakdown</summary>
-                            <div class="mc-grid-3" style="margin-top: 15px; gap: 15px;">
-                                <div>
-                                    <h5 style="margin: 0 0 8px 0; font-size: 0.85em; color: #475569;">Rumination</h5>
-                                    <div id="mc-breakdown-rumination"></div>
-                                </div>
-                                <div>
-                                    <h5 style="margin: 0 0 8px 0; font-size: 0.85em; color: #475569;">Avoidance</h5>
-                                    <div id="mc-breakdown-avoidance"></div>
-                                </div>
-                                <div>
-                                    <h5 style="margin: 0 0 8px 0; font-size: 0.85em; color: #475569;">Emot. Flood</h5>
-                                    <div id="mc-breakdown-flood"></div>
-                                </div>
-                            </div>
-                        </details>
-
-                        <div style="margin-top: 15px; font-size: 0.9em; color: #64748b; font-style: italic;">
-                            * Strain Index metrics are internal-only and not visible to the employee.
-                        </div>
-                    </div>
-
-                    <!-- Coaching Recommendations -->
-                    <div class="mc-section-card">
-                        <div class="mc-section-header">
-                            <h3>Coaching Recommendations</h3>
-                            <span class="mc-section-icon">🎯</span>
-                        </div>
-                        <div id="mc-coaching-container" class="mc-cards-container">
-                            <!-- Cards injected via JS -->
-                        </div>
-                    </div>
-
-                    <!-- Growth Edges -->
-                    <div class="mc-section-card">
-                        <div class="mc-section-header">
-                            <h3>Stretch Assignments</h3>
-                            <span class="mc-section-icon">📈</span>
-                        </div>
-                        <div id="mc-growth-container" class="mc-cards-container">
-                            <!-- Cards injected via JS -->
-                        </div>
-                    </div>
-
-                    <div class="mc-section-card">
-                        <div class="mc-section-header">
-                            <h3>Team & Leadership</h3>
-                            <span class="mc-section-icon">👥</span>
-                        </div>
-                        <div class="mc-grid-2">
-                            <div>
-                                <h4>Collaboration</h4>
-                                <p><strong>Thrives with:</strong> <span id="mc-team-thrives">--</span></p>
-                                <p><strong>Friction with:</strong> <span id="mc-team-friction">--</span></p>
-                            </div>
-                            <div>
-                                <h4>Ideal Conditions</h4>
-                                <p id="mc-hero-conditions">--</p>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- Right Column: Manager Fast Guide -->
-                <div class="mc-report-sidebar">
-                    <div class="mc-fast-guide">
-                        <div class="mc-guide-header">
-                            <h3>Manager Fast Guide</h3>
-                            <small>Print / Save</small>
-                        </div>
-                        <div class="mc-guide-body">
-                            <div class="mc-guide-item">
-                                <strong>Top Strengths</strong>
-                                <ul id="mc-guide-strengths"></ul>
-                            </div>
-                            <div class="mc-guide-item">
-                                <strong>Key Motivators</strong>
-                                <ul id="mc-guide-motivators"></ul>
-                            </div>
-                            <div class="mc-guide-item">
-                                <strong>Communication</strong>
-                                <ul id="mc-guide-comm"></ul>
-                            </div>
-                            <div class="mc-guide-item">
-                                <strong>Coaching Moves</strong>
-                                <ul id="mc-guide-coaching"></ul>
-                            </div>
-                            <div class="mc-guide-item">
-                                <strong>This Year's Growth</strong>
-                                <p id="mc-guide-growth">--</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mc-meta-box">
-                        <h4>Conflict & Stress</h4>
-                        <p><strong>Handling:</strong> <span id="mc-stress-handling">--</span></p>
-                        <p><strong>Signs:</strong> <span id="mc-stress-signs">--</span></p>
-                        <p><strong>Support:</strong> <span id="mc-stress-support">--</span></p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="mc-analysis-meta-warning"
-                style="display:none; margin-top: 20px; font-size: 0.8em; color: #999; text-align: center;">
-                Based on <span id="mc-meta-quiz-count">0</span> quizzes and <span id="mc-meta-peer-count">0</span>
-                peer reviews.
-            </div>
-        </div>
-    </div>
-    </div>
+    <?php MC_Report_Template::render_analysis_modal(true); ?>
 
     <!-- Add Test Data Modal -->
     <div id="mc-add-test-data-modal" class="mc-admin-modal" style="display: none;">
@@ -2231,6 +1153,28 @@ function mc_render_admin_testing_page()
         </div>
     </div>
 
+    <!-- Strain Details Modal -->
+    <div id="mc-strain-details-modal" class="mc-admin-modal"
+        style="display: none; position: fixed; z-index: 100000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+        <div class="mc-admin-modal-content"
+            style="background-color: #fefefe; margin: 5% auto; padding: 0; border: 1px solid #888; width: 80%; max-width: 800px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div class="mc-admin-modal-header"
+                style="padding: 16px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <h2 id="mc-strain-details-title" style="margin: 0; font-size: 20px; color: #1e293b;">Strain Index Deep Dive
+                </h2>
+                <span class="mc-admin-modal-close" onclick="closeStrainDetailsModal()"
+                    style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+            </div>
+            <div class="mc-admin-modal-body" id="mc-strain-details-body" style="padding: 24px;">
+                <!-- Content injected via JS -->
+            </div>
+            <div class="mc-admin-modal-footer"
+                style="padding: 16px 24px; border-top: 1px solid #e2e8f0; text-align: right; background-color: #f8fafc; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
+                <button class="button button-primary" onclick="closeStrainDetailsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
         let employerCounter = 1, employeeCounter = 1;
@@ -2238,7 +1182,7 @@ function mc_render_admin_testing_page()
 
         function autoFillEmployer() {
             const baseEmail = document.getElementById('base_email').value;
-            if (!baseEmail) { alert('Please enter a base email address first'); return; }
+            if (!baseEmail) { alert('Please entera base email address first'); return; }
             const [local, domain] = baseEmail.split('@');
             if (!local || !domain) { alert('Please enter a valid email address'); return; }
             const timestamp = Date.now().toString().slice(-4);
@@ -2284,6 +1228,13 @@ function mc_render_admin_testing_page()
             // Reset loading s             tate
             const loadingDiv = document.getElementById('mc-report-loading');
             const contentDiv = document.getElementById('mc-report-content');
+            const modal = document.getElementById('mc-analysis-modal');
+            if (modal) {
+                modal.style.setProperty('display', 'block', 'important');
+                modal.style.setProperty('z-index', '2147483647', 'important');
+                modal.style.setProperty('visibility', 'visible', 'important');
+                modal.style.setProperty('opacity', '1', 'important');
+            }
             if (loadingDiv) loadingDiv.style.display = 'none';
             if (contentDiv) contentDiv.style.display = 'block';
 
@@ -2574,7 +1525,7 @@ function mc_render_admin_testing_page()
                         if (el) el.innerHTML = `
                             <table style="width:100%; font-size:0.85em; color:#64748b; border-collapse: collapse;">
                                 ${row('MI Quiz', obj.MI, ansObj ? ansObj.MI : null)}
-                                ${row('CDT Quiz', obj.CDT, ansObj ? ansObj.CDT : null)}
+                                ${row('Growth Strengths', obj.CDT, ansObj ? ansObj.CDT : null)}
                                 ${row('Bartle', obj.Bartle, ansObj ? ansObj.Bartle : null)}
                                 <tr style="border-top:1px solid #cbd5e1; font-weight:700; color: #334155;">
                                     <td style="padding-top:4px;">Total</td>
@@ -2721,10 +1672,32 @@ function mc_render_admin_testing_page()
                 };
             }
 
+            // --- DEEP DIVE BUTTON HANDLER ---
+            const deepDiveBtn = document.getElementById('mc-strain-deep-dive-btn');
+            if (deepDiveBtn) {
+                deepDiveBtn.onclick = function (e) {
+                    e.preventDefault();
+                    openStrainDetailsModal(data);
+                };
+            }
+
             // Show Modal
-            const modal = document.getElementById('mc-analysis-modal');
+
             if (modal) {
-                modal.style.display = 'block';
+                modal.style.zIndex = '9999';
+                modal.style.setProperty('display', 'block', 'important');
+                modal.style.setProperty('visibility', 'visible', 'important');
+                modal.style.setProperty('opacity', '1', 'important');
+
+                // Force content visibility
+                const content = modal.querySelector('.mc-modal-content');
+                if (content) {
+                    content.style.setProperty('display', 'block', 'important');
+                    content.style.setProperty('opacity', '1', 'important');
+                    content.style.setProperty('visibility', 'visible', 'important');
+                    content.style.setProperty('z-index', '2147483648', 'important');
+                }
+
                 // Add click outside listener
                 setTimeout(() => {
                     window.addEventListener('click', closeAnalysisOnClickOutside);
@@ -2751,6 +1724,139 @@ function mc_render_admin_testing_page()
             return '/wp-admin/admin-ajax.php';
         }
 
+        function viewStrainDetails(userId, btn) {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<span class="dashicons dashicons-update spin"></span>';
+            btn.disabled = true;
+
+            fetch(getApiUrl(), { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ action: 'mc_view_analysis_report', user_id: userId }) })
+                .then(r => r.json()).then(result => {
+                    btn.innerHTML = originalHTML;
+                    btn.disabled = false;
+                    if (result.success) {
+                        openStrainDetailsModal(result.data);
+                    } else {
+                        alert('Error: ' + (result.data?.message || 'Failed to load strain details'));
+                    }
+                }).catch(e => {
+                    btn.innerHTML = originalHTML;
+                    btn.disabled = false;
+                    alert('Network error.');
+                    console.error(e);
+                });
+        }
+
+        function openStrainDetailsModal(data) {
+            const modal = document.getElementById('mc-strain-details-modal');
+            if (modal) {
+                document.body.appendChild(modal); // Move to body to avoid z-index trapping
+                modal.style.setProperty('z-index', '2147483647', 'important'); // Max Int (Valid)
+                modal.style.display = 'block';
+            }
+            const body = document.getElementById('mc-strain-details-body');
+            const title = document.getElementById('mc-strain-details-title');
+
+            if (title) title.textContent = 'Strain Index Analysis: ' + (data.name || 'Employee');
+
+            let html = '';
+
+            // Overall Score Rationale
+            const si = data.strain_results?.strain_index || {};
+            const overall = si.overall_strain !== undefined ? si.overall_strain : 0;
+            const scorePct = (overall * 100).toFixed(1);
+
+            let color = '#22c55e';
+            let level = 'Low Risk';
+            let rationale = 'This score indicates the employee is showing healthy levels of engagement and resilience.';
+
+            if (overall >= 0.66) {
+                color = '#dc2626';
+                level = 'High Risk';
+                rationale = 'This score indicates significant strain markers. The employee is likely experiencing high levels of rumination, avoidance, or emotional flooding which may lead to burnout.';
+            } else if (overall >= 0.33) {
+                color = '#ca8a04';
+                level = 'Moderate Risk';
+                rationale = 'This score indicates emerging strain markers. While not critical, monitor for signs of increased stress or disengagement.';
+            }
+
+            html += `
+                <div style="display:flex; align-items:center; gap:20px; padding:20px; background:#f8fafc; border-radius:8px; margin-bottom:24px; border-left:4px solid ${color};">
+                    <div style="text-align:center;">
+                        <div style="font-size:32px; font-weight:800; color:${color};">${scorePct}%</div>
+                        <div style="font-size:12px; font-weight:600; text-transform:uppercase; color:#64748b;">Strain Index</div>
+                    </div>
+                    <div>
+                        <h3 style="margin:0 0 8px; color:${color};">${level}</h3>
+                        <p style="margin:0; color:#475569; font-size:14px; line-height:1.5;">${rationale}</p>
+                    </div>
+                </div>
+            `;
+
+            // Scoring Explanation Legend
+            html += `
+                <div style="margin-bottom:20px; padding:15px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; color:#64748b;">
+                    <h4 style="margin:0 0 8px; color:#475569; font-size:13px; text-transform:uppercase;">About Strain Scoring</h4>
+                    <p style="margin:0 0 8px;">The Strain Index measures <strong>cognitive and emotional friction</strong>—the mental effort required to maintain engagement. It is an aggregate score derived from 30 specific questions across the MI, CDT, and Bartle assessments.</p>
+                    <p style="margin:0 0 8px;"><strong>Scoring Context:</strong> Individual questions are scored on a scale of 1 to 5, where <strong>5 indicates the highest level of strain</strong> (strongest agreement with a strain marker).</p>
+                    <ul style="margin:0; padding-left:16px; line-height:1.5;">
+                        <li><span style="color:#22c55e; font-weight:bold;">0% - 33% (Low Risk):</span> Healthy engagement. Few to no strain markers.</li>
+                        <li><span style="color:#ca8a04; font-weight:bold;">33% - 66% (Moderate Risk):</span> Emerging strain. Some conflicting motivations or avoidance behaviors present.</li>
+                        <li><span style="color:#dc2626; font-weight:bold;">66% - 100% (High Risk):</span> Significant strain. High potential for burnout or disengagement.</li>
+                    </ul>
+                </div>
+            `;
+
+            // Detailed Answers Breakdown
+            const details = data.detailed_answers || {};
+            const cats = {
+                'rumination': 'Processing Style (Rumination)',
+                'avoidance': 'Decision Dynamics (Avoidance)',
+                'flood': 'Engagement Style (Emotional Flood)'
+            };
+
+            html += '<div class="mc-strain-accordion">';
+
+            for (const [key, label] of Object.entries(cats)) {
+                if (!details[key]) continue;
+
+                html += `<h3 style="margin:20px 0 12px; border-bottom:1px solid #e2e8f0; padding-bottom:8px; color:#1e293b;">${label}</h3>`;
+
+                ['MI', 'CDT', 'Bartle'].forEach(quiz => {
+                    const answers = details[key][quiz];
+                    if (answers && Object.keys(answers).length > 0) {
+                        html += `<div style="margin-bottom:12px;">`;
+                        html += `<h4 style="margin:0 0 8px; font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Source: ${quiz} Quiz</h4>`;
+                        html += `<ul style="list-style:none; margin:0; padding:0;">`;
+
+                        for (const [q, a] of Object.entries(answers)) {
+                            let ansColor = '#22c55e'; // Low (1)
+                            const val = parseFloat(a);
+                            if (val >= 4) {
+                                ansColor = '#dc2626'; // High (4-5)
+                            } else if (val >= 2) {
+                                ansColor = '#ca8a04'; // Moderate (2-3)
+                            }
+
+                            html += `<li style="margin-bottom:8px; font-size:13px; color:#334155; padding:8px; background:#fff; border:1px solid #f1f5f9; border-radius:4px;">
+                                <strong style="display:block; margin-bottom:4px; color:#0f172a;">${q}</strong>
+                                <span style="color:${ansColor}; font-weight:600;">User Answer: ${a} / 5</span>
+                            </li>`;
+                        }
+
+                        html += `</ul></div>`;
+                    }
+                });
+            }
+            html += '</div>';
+
+            if (body) body.innerHTML = html;
+            if (modal) modal.style.display = 'block';
+        }
+
+        function closeStrainDetailsModal() {
+            document.getElementById('mc-strain-details-modal').style.display = 'none';
+        }
+
         // View existing analysis report (AJAX-based for on-demand detailed_answers loading)
         function viewAnalysisReport(userId, btn) {
             try {
@@ -2763,7 +1869,11 @@ function mc_render_admin_testing_page()
                 const content = document.getElementById('mc-report-content');
 
                 // Show modal in loading state
-                modal.style.display = 'block';
+                // Show modal in loading state
+                modal.style.setProperty('display', 'block', 'important');
+                modal.style.setProperty('z-index', '2147483647', 'important');
+                modal.style.setProperty('visibility', 'visible', 'important');
+                modal.style.setProperty('opacity', '1', 'important');
                 if (loading) loading.style.display = 'block';
                 if (content) content.style.display = 'none';
 
@@ -2802,7 +1912,11 @@ function mc_render_admin_testing_page()
                 const content = document.getElementById('mc-report-content');
 
                 // Show modal in loading state
-                modal.style.display = 'block';
+                // Show modal in loading state
+                modal.style.setProperty('display', 'block', 'important');
+                modal.style.setProperty('z-index', '2147483647', 'important');
+                modal.style.setProperty('visibility', 'visible', 'important');
+                modal.style.setProperty('opacity', '1', 'important');
                 if (loading) loading.style.display = 'block';
                 if (content) content.style.display = 'none';
 
@@ -2839,7 +1953,7 @@ function mc_render_admin_testing_page()
             btn.disabled = true;
 
             // Hide buttons for PDF - simplified selector for hero controls
-            const heroControls = element.querySelector('.mc-hero-controls');
+            const heroControls = element.querySelector('.mc-hero-controls') || element.querySelector('.mc-header-right');
             if (heroControls) heroControls.style.display = 'none';
 
             // Also hide the close button explicitly if needed, though it might be outside mc-report-content depending on structure.
@@ -2848,7 +1962,7 @@ function mc_render_admin_testing_page()
             // <div class="mc-hero-controls" ...>
 
             // If we don't find mc-hero-controls, try to find the button's parent container
-            const btnContainer = btn.closest('.mc-hero-controls');
+            const btnContainer = btn.closest('.mc-hero-controls') || btn.closest('.mc-header-right');
             if (btnContainer) btnContainer.style.display = 'none';
 
             const opt = {

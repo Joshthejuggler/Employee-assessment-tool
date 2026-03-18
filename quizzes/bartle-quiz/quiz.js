@@ -246,9 +246,9 @@
         if (devTools) devTools.style.display = 'none'; // Hide dev tools
         container.innerHTML = `
             <div class="bartle-quiz-card">
-              <h2 class="bartle-section-title">Bartle Player Type Quiz</h2>
+              <h2 class="bartle-section-title">Core Motivation Assessment</h2>
               <div class="bartle-intro-text">
-                <p>The Bartle Player Type Quiz is designed to uncover what truly motivates you when you engage with games, challenges, or even everyday learning. Originally created by game researcher Richard Bartle, the model has been widely used to understand different kinds of players — but the same framework also applies to work, school, and personal growth.</p>
+                <p>The Core Motivation Assessment is designed to uncover what truly motivates you when you engage with challenges, learning, or everyday work. Based on a well-established motivational framework, it helps you understand what keeps you engaged, satisfied, and energized.</p>
                 <p>Instead of just asking what you like, the quiz digs into what keeps you engaged, satisfied, and energized. Are you driven by curiosity, progress, connection, or competition?</p>
                 
                 <h4>The Four Player Types</h4>
@@ -266,12 +266,12 @@
                     <li>Your responses are scored to reveal not just your primary type, but also your secondary motivations.</li>
                 </ul>
 
-                <h4>Why This Matters in Skill of Self-Discovery</h4>
-                <p>The Bartle Player Type quiz is the third layer in the Skill of Self-Discovery journey:</p>
+                <h4>Why This Matters</h4>
+                <p>The Core Motivation Assessment is the third layer in the Self-Discovery journey:</p>
                 <ul>
-                    <li><strong>MI (Multiple Intelligences)</strong> → how you learn.</li>
-                    <li><strong>CDT (Cognitive Dissonance Tolerance)</strong> → how you handle conflict and uncertainty.</li>
-                    <li><strong>Player Type</strong> → what motivates you to keep going.</li>
+                    <li><strong>Multiple Intelligences</strong> → how you learn.</li>
+                    <li><strong>Growth Strengths</strong> → how you handle conflict and uncertainty.</li>
+                    <li><strong>Core Motivations</strong> → what motivates you to keep going.</li>
                 </ul>
                 <p>When you combine these, you get a fuller picture of your learning style, your resilience, and your drive.</p>
               </div>
@@ -420,11 +420,11 @@
         const headerHtml = `
             <div class="results-main-header">
                 <div class="site-branding">
-                    <span class="site-title">What You're Good At</span>
+                    <span class="site-title">The Science of Teamwork</span>
                 </div>
             </div>
             <div class="bartle-results-header">
-                <h1>Your Bartle Player Type Results</h1>
+                <h1>Your Core Motivation Results</h1>
                 <h2>Results for ${userFirstName}</h2>
                 <p class="bartle-results-metadata">Generated on: ${new Date().toLocaleDateString()}</p>
                 <p class="bartle-results-summary">This quiz uncovers what truly motivates you when you engage with games, challenges, or even everyday learning.</p>

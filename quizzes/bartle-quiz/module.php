@@ -17,7 +17,7 @@ class Bartle_Quiz_Plugin
         // 1. Register this quiz with the core platform.
         if (class_exists('Micro_Coach_Core')) {
             Micro_Coach_Core::register_quiz('bartle-quiz', [
-                'title' => 'Bartle Player Type Quiz',
+                'title' => 'Core Motivation Assessment',
                 'shortcode' => self::SHORTCODE,
                 'results_meta_key' => self::META_KEY,
                 'order' => 50,
@@ -189,7 +189,7 @@ class Bartle_Quiz_Plugin
                 </div>
                 <div style="text-align:center; margin: 1em 0 0.5em;">
                     <button type="button" id="bartle-start-btn" class="bartle-quiz-button bartle-quiz-button-primary">Start
-                        Bartle Quiz</button>
+                        Assessment</button>
                 </div>
             </div>
 
@@ -198,7 +198,7 @@ class Bartle_Quiz_Plugin
 
             <!-- Bartle Quiz Introduction -->
             <div id="bartle-about-modal" class="bartle-quiz-intro quiz-about-card" style="display:none;">
-                <h2>Bartle Player Type Quiz</h2>
+                <h2>Core Motivation Assessment</h2>
                 <div class="bartle-intro-content">
                     <p>The Bartle Player Type Quiz is designed to uncover what truly motivates you when you engage with games,
                         challenges, or even everyday learning. Originally created by game researcher Richard Bartle, the model

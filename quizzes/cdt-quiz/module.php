@@ -14,7 +14,7 @@ class CDT_Quiz_Plugin
         // 1. Register this quiz with the core platform.
         if (class_exists('Micro_Coach_Core')) {
             Micro_Coach_Core::register_quiz('cdt-quiz', [
-                'title' => 'Cognitive Dissonance Tolerance',
+                'title' => 'Growth Strengths',
                 'shortcode' => self::SHORTCODE,
                 'results_meta_key' => self::META_KEY,
                 'order' => 30,
@@ -126,7 +126,7 @@ class CDT_Quiz_Plugin
                 $next_step_title = 'View Your Self-Discovery Profile';
             } else {
                 $next_step_url = $this->_find_page_by_shortcode('bartle_quiz');
-                $next_step_title = 'Take the Bartle Quiz Now';
+                $next_step_title = 'Take the Core Motivation Assessment';
             }
         }
 
@@ -223,8 +223,8 @@ class CDT_Quiz_Plugin
                     </ul>
                 </div>
                 <div style="text-align:center; margin-top: 1em;">
-                    <button type="button" id="cdt-start-btn" class="cdt-quiz-button cdt-quiz-button-primary">Start CDT
-                        Quiz</button>
+                    <button type="button" id="cdt-start-btn" class="cdt-quiz-button cdt-quiz-button-primary">Start
+                        Assessment</button>
                 </div>
             </div>
         </div>
@@ -232,7 +232,7 @@ class CDT_Quiz_Plugin
         <div id="cdt-toolbar" style="display:none; text-align:right; padding: 0 2em 0.75em;"></div>
 
         <div id="cdt-about-modal" class="cdt-quiz-card quiz-about-card" style="display:none; text-align:left;">
-            <h2 class="cdt-section-title">About the CDT Quiz</h2>
+            <h2 class="cdt-section-title">About the Growth Strengths Assessment</h2>
 
             <div style="margin-top:0.5rem;">
                 <h3 class="cdt-section-title" style="font-size:1.1rem;">What it measures</h3>
@@ -402,16 +402,16 @@ class CDT_Quiz_Plugin
             $branding_logo = MC_Helpers::logo_url();
             $branding_html = '<div style="text-align:center; padding: 20px 0; border-bottom: 1px solid #ddd;">'
                 . '<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;"><tbody><tr>'
-                . '<td style="vertical-align:middle; padding-left:15px;"><span style="font-size: 1.3em; font-weight: 600; color: #1a202c; line-height: 1.2;">What You\'re Good At</span></td>'
+                . '<td style="vertical-align:middle; padding-left:15px;"><span style="font-size: 1.3em; font-weight: 600; color: #1a202c; line-height: 1.2;">The Science of Teamwork</span></td>'
                 . '</tr></tbody></table></div>';
 
-            $user_subject = $this->maybe_antithread('Your CDT Quiz Results');
+            $user_subject = $this->maybe_antithread('Your Growth Strengths Assessment Results');
             $user_body = '<!DOCTYPE html><html><body style="font-family: sans-serif; color: #333; background-color: #f4f4f4; padding: 20px;">
                 <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">'
                 . $branding_html .
                 '<div style="padding: 20px;">' .
                 sprintf('<h1 style="margin: 0 0 1em 0; color: #1a202c; font-size: 24px;">Hi %s,</h1>', esc_html($user->first_name)) .
-                '<p>Thank you for completing the Cognitive Dissonance Tolerance quiz. A PDF of your results is attached for your records.</p>
+                '<p>Thank you for completing the Growth Strengths Assessment. A PDF of your results is attached for your records.</p>
                 <p>You can always view your results on your dashboard.</p>
                 </div></div></body></html>';
             $user_headers = ['Content-Type: text/html; charset=UTF-8'];
@@ -420,9 +420,9 @@ class CDT_Quiz_Plugin
             // Email to admin
             $admin_list_raw = array_filter(array_map('trim', explode(',', get_option('miq_bcc_emails', ''))));
             if (!empty($admin_list_raw)) {
-                $admin_subject = $this->maybe_antithread(sprintf('[CDT Quiz] Results for %s', $user->display_name));
+                $admin_subject = $this->maybe_antithread(sprintf('[Growth Strengths] Results for %s', $user->display_name));
                 $admin_body = '<html><body style="font-family: sans-serif;">' . $branding_html;
-                $admin_body .= '<h1>CDT Quiz results for ' . esc_html($user->display_name) . ' (' . esc_html($user->user_email) . ')</h1>' . $results_html . '</body></html>';
+                $admin_body .= '<h1>Growth Strengths Assessment results for ' . esc_html($user->display_name) . ' (' . esc_html($user->user_email) . ')</h1>' . $results_html . '</body></html>';
                 $admin_headers = [
                     'Content-Type: text/html; charset=UTF-8',
                     'Bcc: ' . implode(', ', $admin_list_raw),

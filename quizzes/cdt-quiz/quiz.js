@@ -992,14 +992,14 @@
         const headerHtml = `
             <div class="results-main-header">
                 <div class="site-branding">
-                    <span class="site-title">What You're Good At</span>
+                    <span class="site-title">The Science of Teamwork</span>
                 </div>
             </div>
             <div class="cdt-results-header">
-                <h1>Your Cognitive Dissonance Tolerance Results</h1>
+                <h1>Your Growth Strengths Results</h1>
                 <h2>Results for ${userFirstName}</h2>
                 <p class="cdt-results-metadata">Generated on: ${new Date().toLocaleDateString()}</p>
-                <p class="cdt-results-summary">Your CDT profile reveals how you respond to inner conflict, contradictions, and uncertainty — and how you can grow from them.</p>
+                <p class="cdt-results-summary">Your Growth Strengths profile reveals how you respond to inner conflict, contradictions, and uncertainty — and how you can grow from them.</p>
             </div>`;
 
         const overviewHtml = `
@@ -1034,8 +1034,8 @@
         if (nextStepUrl) {
             nextStepsHtml = `
                 <div class="cdt-results-section cdt-next-steps-section">
-                    <h3 class="cdt-section-title">Your Next Step: Discover Your Player Type</h3>
-                    <p>You've explored how you handle inner conflict. Now, discover what truly motivates you. The Bartle Player Type quiz reveals your primary drivers in challenges, learning, and collaboration.</p>
+                    <h3 class="cdt-section-title">Your Next Step: Discover Your Core Motivations</h3>
+                    <p>You've explored how you handle inner conflict. Now, discover what truly motivates you. The Core Motivation Assessment reveals your primary drivers in challenges, learning, and collaboration.</p>
                     <div class="cdt-results-actions">
                         <a href="${nextStepUrl}" class="cdt-quiz-button cdt-quiz-button-primary">${nextStepTitle}</a>
                     </div>

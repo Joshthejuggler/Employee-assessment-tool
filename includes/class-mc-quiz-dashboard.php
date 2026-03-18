@@ -69,7 +69,7 @@ class MC_Quiz_Dashboard
         ?>
         <div class="mc-dashboard-wrapper">
             <header class="mc-site-header">
-                <div class="mc-logo">What You're Good At</div>
+                <div class="mc-logo">The Science of Teamwork</div>
                 <div class="mc-nav">
                     <span class="mc-user-greeting">Hello, <?php echo esc_html($user_info->display_name); ?></span>
                     <?php
@@ -419,7 +419,7 @@ class MC_Quiz_Dashboard
                                                         $primary_type = $bartle_results['sortedScores'][0][0] ?? '';
                                                         $type_label = $bartle_categories[$primary_type] ?? ucfirst($primary_type);
 
-                                                        echo '<span class="mc-summary-label">Player Type</span>';
+                                                        echo '<span class="mc-summary-label">Core Motivation</span>';
                                                         echo '<div class="mc-tag-group">';
                                                         echo '<span class="mc-tag">' . esc_html($type_label) . '</span>';
                                                         echo '</div>';

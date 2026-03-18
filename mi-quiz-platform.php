@@ -78,6 +78,9 @@ if (!class_exists('MC_Magic_Login')) {
 if (!class_exists('MC_User_Switcher')) {
     require_once MC_QUIZ_PLATFORM_PATH . 'includes/class-mc-user-switcher.php';
 }
+if (!class_exists('MC_Report_Template')) {
+    require_once MC_QUIZ_PLATFORM_PATH . 'includes/class-mc-report-template.php';
+}
 
 // Include all the necessary class files.
 // These files should ONLY define classes, not run any code themselves.
@@ -204,12 +207,12 @@ function mc_quiz_platform_activate()
             'shortcode' => 'mi_quiz'
         ],
         'cdt-quiz' => [
-            'title' => 'Cognitive Dissonance Tolerance Quiz',
+            'title' => 'Growth Strengths Assessment',
             'content' => '[cdt_quiz]',
             'shortcode' => 'cdt_quiz'
         ],
         'bartle-quiz' => [
-            'title' => 'Player Type Discovery',
+            'title' => 'Core Motivation Assessment',
             'content' => '[bartle_quiz]',
             'shortcode' => 'bartle_quiz'
         ],
@@ -287,7 +290,7 @@ add_filter('elementor/widget/render_content', 'mc_force_render_quiz_shortcodes_i
  */
 function mc_enqueue_landing_page_styles()
 {
-    wp_enqueue_style('mc-landing-pages', plugins_url('assets/landing-pages.css', __FILE__), [], '1.0.3');
+    wp_enqueue_style('mc-landing-pages', plugins_url('assets/landing-pages.css', __FILE__), [], '1.0.4');
 
     // Enqueue employer dashboard styles on dashboard page
     if (is_page() && has_shortcode(get_post()->post_content, 'mc_employer_dashboard')) {

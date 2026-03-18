@@ -89,6 +89,16 @@ class MC_Super_Admin
             '1.0.14'
         );
 
+        // Enqueue employer dashboard styles for the report modal on Admin Testing page
+        if (strpos($hook, 'admin-testing-page') !== false) {
+            wp_enqueue_style(
+                'mc-employer-dashboard',
+                plugin_dir_url(__DIR__) . 'assets/employer-dashboard.css',
+                [],
+                MC_QUIZ_PLATFORM_VERSION
+            );
+        }
+
         wp_enqueue_script(
             'mc-super-admin-js',
             plugin_dir_url(__DIR__) . 'assets/super-admin.js',
@@ -345,6 +355,7 @@ class MC_Super_Admin
                                                         <div class="mc-grid-head">Name</div>
                                                         <div class="mc-grid-head">Email</div>
                                                         <div class="mc-grid-head">Status</div>
+                                                        <div class="mc-grid-head">Quizzes</div>
                                                         <div class="mc-grid-head">Last Login</div>
                                                         <div class="mc-grid-head">Actions</div>
 
@@ -353,12 +364,31 @@ class MC_Super_Admin
                                                             $is_active = $this->is_user_active($employee->ID);
                                                             $emp_status = $is_active ? 'Active' : 'Invited';
                                                             $emp_status_class = $is_active ? 'mc-badge-success' : 'mc-badge-warning';
+
+                                                            // Calculate completed quizzes
+                                                            $completed_quizzes = 0;
+                                                            $quiz_metas = ['miq_quiz_results', 'cdt_quiz_results', 'bartle_quiz_results'];
+                                                            foreach ($quiz_metas as $meta_key) {
+                                                                if (get_user_meta($employee->ID, $meta_key, true)) {
+                                                                    $completed_quizzes++;
+                                                                }
+                                                            }
                                                             ?>
                                                             <div class="mc-grid-cell"><?php echo esc_html($employee->display_name); ?></div>
-                                                            <div class="mc-grid-cell"><?php echo esc_html($employee->user_email); ?></div>
+                                                            <div class="mc-grid-cell">
+                                                                <a href="mailto:<?php echo esc_attr($employee->user_email); ?>"
+                                                                    title="<?php echo esc_attr($employee->user_email); ?>">
+                                                                    <?php echo esc_html($employee->user_email); ?>
+                                                                </a>
+                                                            </div>
                                                             <div class="mc-grid-cell">
                                                                 <span class="mc-badge <?php echo esc_attr($emp_status_class); ?>">
                                                                     <?php echo esc_html($emp_status); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div class="mc-grid-cell">
+                                                                <span class="mc-badge mc-badge-info">
+                                                                    <?php echo esc_html($completed_quizzes . ' / 3'); ?>
                                                                 </span>
                                                             </div>
                                                             <div class="mc-grid-cell">

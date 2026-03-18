@@ -20,8 +20,8 @@ class MC_Funnel
             'steps' => ['mi-quiz', 'cdt-quiz', 'bartle-quiz'],
             'titles' => [
                 'mi-quiz' => 'Multiple Intelligences Assessment',
-                'cdt-quiz' => 'Cognitive Dissonance Tolerance Quiz',
-                'bartle-quiz' => 'Player Type Discovery'
+                'cdt-quiz' => 'Growth Strengths Assessment',
+                'bartle-quiz' => 'Core Motivation Assessment'
             ],
             'placeholder' => [
                 'title' => 'Advanced Self-Discovery Module',
@@ -133,6 +133,26 @@ class MC_Funnel
     }
 
     /**
+     * Get business-friendly translations for MI terms
+     * 
+     * @return array Map of slug => Business Competency
+     */
+    public static function get_mi_business_translations()
+    {
+        return [
+            'linguistic' => 'Communication & Articulation',
+            'logical-mathematical' => 'Data Analysis & Strategy',
+            'spatial' => 'Design & Visualization',
+            'bodily-kinesthetic' => 'Operational Execution',
+            'musical' => 'Pattern Recognition & Flow',
+            'interpersonal' => 'Leadership & Collaboration',
+            'intrapersonal' => 'Self-Regulation & Autonomy',
+            'naturalistic' => 'Systems Thinking',
+            'existential' => 'Big Picture Strategy'
+        ];
+    }
+
+    /**
      * Check if all assessments are complete and trigger notifications/AI analysis
      * 
      * @param int $user_id User ID
@@ -172,20 +192,47 @@ class MC_Funnel
             update_user_meta($user_id, 'mc_all_assessments_completed', time());
 
             // 1. Generate AI Analysis
+            $analysis = null;
             if (class_exists('Micro_Coach_AI')) {
                 $analysis = Micro_Coach_AI::generate_analysis_on_completion($user_id);
             }
 
-            // 2. Send Admin/Employer Notification
+            // Fallback: If generation failed (e.g. no key) or returned false, check if we have a saved analysis
+            if (empty($analysis)) {
+                $analysis = get_user_meta($user_id, 'mc_assessment_analysis', true);
+            }
+
+            // 2. Prepare Data for Email
             $admin_email = get_option('admin_email');
             $user_info = get_userdata($user_id);
             $user_name = $user_info ? $user_info->display_name : 'User #' . $user_id;
+            $user_email = $user_info ? $user_info->user_email : '';
 
             // Find linked employer
             $linked_employer_id = get_user_meta($user_id, 'mc_linked_employer_id', true);
             $employer_email = $linked_employer_id ? get_userdata($linked_employer_id)->user_email : $admin_email;
 
-            $subject = 'Assessment Suitability Report: ' . $user_name;
+            // Fetch Raw Results
+            $all_results = self::get_all_assessment_results($user_id);
+
+            // Extract & Translate Key Metrics
+            $mi_map = self::get_mi_business_translations();
+            $mi_top3 = $all_results['mi']['top3'] ?? [];
+            $mi_labels = array_map(function ($slug) use ($mi_map) {
+                return $mi_map[$slug] ?? ucwords(str_replace('-', ' ', $slug));
+            }, $mi_top3);
+
+            // Format MI list with bullets if more than one, or comma separated
+            // Let's use a nice list for the email
+
+            $cdt_score = $all_results['cdt']['sortedScores'][0][1] ?? 0;
+            $cdt_label = $all_results['cdt']['sortedScores'][0][0] ?? 'N/A';
+            $cdt_summary = ucwords(str_replace('-', ' ', $cdt_label)); // Removed score as per feedback
+
+            $bartle_type = $all_results['bartle']['sortedScores'][0][0] ?? 'N/A';
+            $bartle_summary = ucwords($bartle_type);
+
+            $subject = 'Assessment Insights: ' . $user_name;
 
             $dashboard_url = self::find_page_by_shortcode('mc_employer_dashboard');
             if (!$dashboard_url) {
@@ -194,45 +241,106 @@ class MC_Funnel
 
             $headers = ['Content-Type: text/html; charset=UTF-8'];
 
-            $message = "<!DOCTYPE html><html><body style='font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; padding: 20px;'>";
-            $message .= "<div style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);'>";
+            // 3. Build HTML Email
+            ob_start();
+            ?>
+            <!DOCTYPE html>
+            <html>
 
-            $message .= "<h2 style='color: #1e293b; margin-top: 0; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;'>Assessment Suitability Report</h2>";
+            <body
+                style='font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f3f4f6; margin: 0; padding: 20px;'>
+                <div
+                    style='max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); overflow: hidden;'>
 
-            $message .= "<p style='font-size: 16px;'><strong>Employee:</strong> " . esc_html($user_name) . " (" . esc_html($user_info->user_email) . ")</p>";
-            $message .= "<p style='color: #64748b;'>This employee has completed all assigned assessments. Based on their profile and your workplace context, here is the AI-generated analysis:</p>";
+                    <!-- Header -->
+                    <div
+                        style='background-color: #1e293b; padding: 32px 24px; text-align: center; border-bottom: 4px solid #3b82f6;'>
+                        <h2 style='color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;'>Assessment
+                            Completed</h2>
+                        <p style='color: #94a3b8; margin: 8px 0 0 0; font-size: 16px;'><?php echo esc_html($user_name); ?></p>
+                    </div>
 
-            if (!empty($analysis)) {
-                $strengths = $analysis['strengths'] ?? [];
-                $red_flags = $analysis['red_flags'] ?? [];
+                    <div style='padding: 32px 24px;'>
 
-                if (is_string($strengths))
-                    $strengths = [$strengths];
-                if (is_string($red_flags))
-                    $red_flags = [$red_flags];
+                        <?php if (!empty($analysis) && !empty($analysis['executive_snapshot'])): ?>
+                            <?php $snapshot = $analysis['executive_snapshot']; ?>
 
-                $message .= "<div style='background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #bbf7d0;'>";
-                $message .= "<h3 style='color: #15803d; margin-top: 0; display: flex; align-items: center; font-size: 18px;'>✅ Positive Signs</h3>";
-                $message .= "<ul style='margin-bottom: 0; padding-left: 20px;'>";
-                foreach ($strengths as $point) {
-                    $message .= "<li style='margin-bottom: 8px; color: #14532d;'>" . esc_html($point) . "</li>";
-                }
-                $message .= "</ul></div>";
+                            <!-- AI Executive Summary Card -->
+                            <div
+                                style='background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 24px; margin-bottom: 32px;'>
+                                <div style='display: flex; align-items: center; margin-bottom: 12px;'>
+                                    <span style='font-size: 20px; margin-right: 8px;'>💡</span>
+                                    <h3 style='margin: 0; color: #1e40af; font-size: 18px; font-weight: 700;'>Executive Snapshot</h3>
+                                </div>
+                                <p style='margin: 0; color: #1e3a8a; font-size: 16px; font-style: italic; line-height: 1.6;'>
+                                    "<?php echo esc_html($snapshot['context_summary'] ?? 'Analysis complete.'); ?>"
+                                </p>
+                            </div>
 
-                $message .= "<div style='background: #fef2f2; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #fecaca;'>";
-                $message .= "<h3 style='color: #b91c1c; margin-top: 0; display: flex; align-items: center; font-size: 18px;'>🚩 Red Flags / Risks</h3>";
-                $message .= "<ul style='margin-bottom: 0; padding-left: 20px;'>";
-                foreach ($red_flags as $point) {
-                    $message .= "<li style='margin-bottom: 8px; color: #7f1d1d;'>" . esc_html($point) . "</li>";
-                }
-                $message .= "</ul></div>";
-            }
+                        <?php else: ?>
+                            <div style='background-color: #eff6ff; padding: 16px; border-radius: 8px; border: 1px solid #bfdbfe; margin-bottom: 24px;'>
+                                <p style='margin: 0; color: #1e3a8a; font-size: 14px;'>
+                                    <strong>AI Insights Ready:</strong> Unlock the full AI-synthesized Executive Summary and detailed insights on your dashboard.
+                                </p>
+                            </div>
+                        <?php endif; ?>
 
-            $message .= "<div style='text-align: center; margin-top: 35px; padding-top: 20px; border-top: 1px dashed #e2e8f0;'>";
-            $message .= "<a href='" . esc_url($dashboard_url) . "' style='background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;'>View Dashboard</a>";
-            $message .= "</div>";
+                        <!-- Core Competencies (MI Transformed) -->
+                        <div style='margin-bottom: 32px;'>
+                            <h3
+                                style='color: #0f172a; font-size: 18px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 16px;'>
+                                Top Business Competencies
+                            </h3>
+                            <div style='display: grid; grid-gap: 12px;'>
+                                <?php foreach ($mi_labels as $label): ?>
+                                    <div
+                                        style='background: #f8fafc; padding: 12px 16px; border-radius: 6px; border-left: 4px solid #3b82f6; font-weight: 600; color: #334155;'>
+                                        <?php echo esc_html($label); ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
 
-            $message .= "</div></body></html>";
+                        <!-- Secondary Metrics Grid -->
+                        <div style='display: table; width: 100%; border-spacing: 0; margin-bottom: 24px;'>
+                            <div
+                                style='display: table-cell; width: 48%; vertical-align: top; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;'>
+                                <strong
+                                    style='display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-bottom: 8px;'>Change
+                                    Style</strong>
+                                <span
+                                    style='font-size: 16px; font-weight: 600; color: #0f172a;'><?php echo esc_html($cdt_summary); ?></span>
+                            </div>
+                            <div style='display: table-cell; width: 4%;'></div> <!-- Spacer -->
+                            <div
+                                style='display: table-cell; width: 48%; vertical-align: top; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;'>
+                                <strong
+                                    style='display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-bottom: 8px;'>Motivation</strong>
+                                <span
+                                    style='font-size: 16px; font-weight: 600; color: #0f172a;'><?php echo esc_html($bartle_summary); ?></span>
+                            </div>
+                        </div>
+
+                        <div style='text-align: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid #e2e8f0;'>
+                            <a href='<?php echo esc_url($dashboard_url); ?>'
+                                style='background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); transition: all 0.2s;'>
+                                Access Full Employee Report
+                            </a>
+                            <p style='margin-top: 16px; font-size: 13px; color: #94a3b8;'>
+                                View detailed breakdown, coaching tips, and growth edges on the dashboard.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style='background-color: #f1f5f9; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;'>
+                        <p style='margin: 0; color: #94a3b8; font-size: 12px;'>Micro-Coach Assessment Tool</p>
+                    </div>
+                </div>
+            </body>
+
+            </html>
+            <?php
+            $message = ob_get_clean();
 
             wp_mail($employer_email, $subject, $message, $headers);
         }

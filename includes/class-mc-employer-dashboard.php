@@ -10,6 +10,44 @@ class MC_Employer_Dashboard
     public static function init()
     {
         add_shortcode('mc_employer_dashboard', [__CLASS__, 'render_dashboard']);
+        wp_enqueue_style('mc-employer-dashboard-css', plugin_dir_url(__FILE__) . '../assets/employer-dashboard.css', [], time());
+        add_action('wp_ajax_mc_save_employee_context', [__CLASS__, 'ajax_save_employee_context']);
+    }
+
+    public static function render_modals()
+    {
+        ?>
+        <!-- Employee Context Modal -->
+        <div id="mc-employee-modal" class="mc-modal" style="display:none; z-index:99999;">
+            <div class="mc-modal-content" style="display:block; opacity:1;">
+                <span class="mc-close" onclick="closeEmployeeModal()">&times;</span>
+                <h2>Manage Employee Role</h2>
+                <p id="mc-emp-name-display"></p>
+                <form id="mc-role-form" onsubmit="event.preventDefault(); saveEmployeeContext(false);">
+                    <input type="hidden" name="mc_employee_id" id="mc_emp_id_input">
+                    <div class="mc-form-group">
+                        <label>Role Title <span class="mc-required">*</span></label>
+                        <input type="text" name="mc_role_title" id="mc_role_input" placeholder="e.g. Senior Developer" required>
+                    </div>
+                    <div class="mc-form-group">
+                        <label>Key Responsibilities <span class="mc-required">*</span></label>
+                        <textarea name="mc_responsibilities" id="mc_resp_input" rows="4"
+                            placeholder="Key duties and expectations..." required></textarea>
+                    </div>
+                    <div class="mc-form-actions" style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+                        <button type="button" class="mc-button secondary" onclick="closeEmployeeModal()">Cancel</button>
+                        <button type="button" class="mc-button" id="mc-save-only-btn" onclick="saveEmployeeContext(false)">Save
+                            Details</button>
+                        <button type="button" class="mc-button primary" id="mc-save-generate-btn"
+                            onclick="saveEmployeeContext(true)">Save & Generate Report</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Analysis Modal -->
+        <?php MC_Report_Template::render_analysis_modal(false); ?>
+    <?php
     }
 
     public static function render_dashboard()
@@ -148,17 +186,41 @@ class MC_Employer_Dashboard
         $resend_message = '';
         if (isset($_POST['mc_resend_invite'])) {
             $email_to_resend = sanitize_email($_POST['mc_resend_invite']);
+            // ... (existing resend logic stays same, omitted for brevity if not changing) ...
             if (is_email($email_to_resend) && in_array($email_to_resend, $invited_emails)) {
-                // Re-use logic from onboarding or duplicate it here for simplicity
-                // For now, let's duplicate the core sending logic to avoid complex dependencies
-                // In a real refactor, we'd move sending to a helper method.
+                $token = '';
+                $invites_updated = false;
+
+                // Find and update the specific invite with a token if needed
+                foreach ($invited_emails as $key => $invite_arr) {
+                    $inv_email = is_array($invite_arr) ? $invite_arr['email'] : $invite_arr;
+                    if ($inv_email === $email_to_resend) {
+                        if (is_array($invite_arr)) {
+                            if (empty($invite_arr['token'])) {
+                                $token = $user_id . '-' . substr(md5(uniqid(mt_rand(), true)), 0, 8);
+                                $invited_emails[$key]['token'] = $token;
+                                $invites_updated = true;
+                            } else {
+                                $token = $invite_arr['token'];
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                if ($invites_updated) {
+                    update_user_meta($user_id, 'mc_invited_employees', $invited_emails);
+                }
 
                 $share_code = get_user_meta($user_id, 'mc_company_share_code', true);
                 $employee_landing_url = '#';
                 if (class_exists('MC_Funnel')) {
                     $employee_landing_url = MC_Funnel::find_page_by_shortcode('mc_employee_landing') ?: home_url();
                 }
-                $invite_link = add_query_arg('invite_code', $share_code, $employee_landing_url);
+
+                // Use token if we have one, otherwise fallback to share code
+                $code_to_use = $token ?: $share_code;
+                $invite_link = add_query_arg('invite_code', $code_to_use, $employee_landing_url);
 
                 $subject = "You've been invited to join " . $company_name . "'s Assessment Platform";
                 $headers = ['Content-Type: text/html; charset=UTF-8'];
@@ -260,6 +322,54 @@ class MC_Employer_Dashboard
             }
         }
 
+        // Handle Edit Invite Email
+        if (isset($_POST['mc_edit_invite_email_old']) && isset($_POST['mc_edit_invite_email_new'])) {
+            $old_email = sanitize_email($_POST['mc_edit_invite_email_old']);
+            $new_email = sanitize_email($_POST['mc_edit_invite_email_new']);
+
+            if (is_email($new_email) && !empty($old_email)) {
+                $exists = get_user_by('email', $new_email);
+                if ($exists) {
+                    $resend_message = '<div class="mc-alert error">User with this email already exists.</div>';
+                } else {
+                    $current_invites = get_user_meta($user_id, 'mc_invited_employees', true);
+                    $updated = false;
+                    if (is_array($current_invites)) {
+                        foreach ($current_invites as $key => $invite) {
+                            $inv_email = is_array($invite) ? $invite['email'] : $invite;
+                            if ($inv_email === $old_email) {
+                                // Update Email
+                                if (is_array($invite)) {
+                                    $current_invites[$key]['email'] = $new_email;
+                                    // Generate new token to invalidate old link
+                                    $current_invites[$key]['token'] = $user_id . '-' . substr(md5(uniqid(mt_rand(), true)), 0, 8);
+                                } else {
+                                    // Handle legacy string format
+                                    $current_invites[$key] = [
+                                        'email' => $new_email,
+                                        'name' => '', // Unknown if legacy
+                                        'token' => $user_id . '-' . substr(md5(uniqid(mt_rand(), true)), 0, 8)
+                                    ];
+                                }
+                                $updated = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if ($updated) {
+                        update_user_meta($user_id, 'mc_invited_employees', $current_invites);
+                        $invited_emails = $current_invites; // Refresh local list
+                        $resend_message = '<div class="mc-alert success">Email updated to ' . esc_html($new_email) . '. Please resend the invite.</div>';
+                    } else {
+                        $resend_message = '<div class="mc-alert error">Could not find invite to update.</div>';
+                    }
+                }
+            } else {
+                $resend_message = '<div class="mc-alert error">Invalid email address.</div>';
+            }
+        }
+
         // Handle Save Workplace Context
         if (isset($_POST['mc_save_workplace_context'])) {
             $company_name_input = sanitize_text_field($_POST['mc_company_name_update']);
@@ -336,7 +446,7 @@ class MC_Employer_Dashboard
             data-default-role="<?php echo esc_attr($default_role); ?>">
             <?php echo $resend_message; ?>
             <header class="mc-site-header">
-                <div class="mc-logo">What You're Good At</div>
+                <div class="mc-logo">The Science of Teamwork</div>
                 <div class="mc-nav">
                     <span class="mc-user-greeting"><?php echo esc_html($company_name); ?></span>
                     <?php
@@ -456,6 +566,11 @@ class MC_Employer_Dashboard
                         // Handle backward compatibility (string vs array)
                         $email = is_array($invite_data) ? $invite_data['email'] : $invite_data;
                         $name = is_array($invite_data) ? $invite_data['name'] : '';
+                        $token = (is_array($invite_data) && !empty($invite_data['token'])) ? $invite_data['token'] : '';
+
+                        if (isset($invite_data['claimed_by'])) {
+                            continue;
+                        }
 
                         if (!isset($display_list[$email])) {
                             $status = 'Pending';
@@ -495,14 +610,16 @@ class MC_Employer_Dashboard
                                     'email' => $email,
                                     'user' => $user,
                                     'status' => $status,
-                                    'invited_name' => $name
+                                    'invited_name' => $name,
+                                    'token' => $token
                                 ];
                             } elseif (!isset($display_list[$email])) {
                                 $display_list[$email] = [
                                     'email' => $email,
                                     'user' => null,
                                     'status' => $status,
-                                    'invited_name' => $name
+                                    'invited_name' => $name,
+                                    'token' => $token
                                 ];
                             }
                         }
@@ -539,11 +656,14 @@ class MC_Employer_Dashboard
                                         $invite_link = '';
                                         if ($status === 'Pending') {
                                             $share_code = get_user_meta($user_id, 'mc_company_share_code', true);
+                                            // Prefer unique token if available
+                                            $code_to_use = !empty($item['token']) ? $item['token'] : $share_code;
+
                                             $employee_landing_url = '#';
                                             if (class_exists('MC_Funnel')) {
                                                 $employee_landing_url = MC_Funnel::find_page_by_shortcode('mc_employee_landing') ?: home_url();
                                             }
-                                            $invite_link = add_query_arg('invite_code', $share_code, $employee_landing_url);
+                                            $invite_link = add_query_arg('invite_code', $code_to_use, $employee_landing_url);
                                         }
 
                                         // Determine row class for filtering
@@ -561,9 +681,10 @@ class MC_Employer_Dashboard
                                                         <span
                                                             class="mc-employee-name"><?php echo esc_html($employee_user->display_name); ?></span>
                                                     <?php elseif (!empty($item['invited_name'])): ?>
-                                                        <span class="mc-employee-name"
-                                                            style="color: #64748b; font-style: italic;"><?php echo esc_html($item['invited_name']); ?>
-                                                            (Invited)</span>
+                                                        <span class="mc-employee-name" style="color: #64748b; font-style: italic;">
+                                                            <?php echo esc_html($item['invited_name']); ?>
+                                                            (Invited)
+                                                        </span>
                                                     <?php endif; ?>
                                                 </div>
                                             </td>
@@ -610,6 +731,16 @@ class MC_Employer_Dashboard
                                                                 <span class="tooltiptext">Resend Invite</span>
                                                             </button>
                                                         </form>
+                                                        <!--  1.5 Edit Email (New) -->
+                                                        <button type="button" class="mc-action-btn mc-tooltip"
+                                                            onclick="openEmailEditModal('<?php echo esc_js($email); ?>')">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                                                stroke-width="1.5" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                                            </svg>
+                                                            <span class="tooltiptext">Edit Email</span>
+                                                        </button>
                                                     <?php endif; ?>
 
                                                     <?php if ($status !== 'Pending' && $status !== 'Archived'): ?>
@@ -659,6 +790,7 @@ class MC_Employer_Dashboard
                                                         <?php
                                                         $analysis = get_user_meta($employee_user->ID, 'mc_assessment_analysis', true);
                                                         $strain_results = get_user_meta($employee_user->ID, 'strain_index_results', true);
+
                                                         if ($analysis):
                                                             ?>
                                                             <button class="mc-action-btn mc-tooltip" onclick='openAnalysisModal(<?php echo htmlspecialchars(json_encode([
@@ -685,6 +817,7 @@ class MC_Employer_Dashboard
                                                                 ?>
                                                                 <?php
                                                                 $role_ctx = get_user_meta($employee_user->ID, 'mc_employee_role_context', true);
+                                                                // $has_role = !empty($role_ctx) && !empty($role_ctx['role']);
                                                                 $has_role = !empty($role_ctx) && !empty($role_ctx['role']);
                                                                 ?>
                                                                 <button class="mc-action-btn mc-tooltip"
@@ -791,389 +924,10 @@ class MC_Employer_Dashboard
             </div>
         </div>
 
-        <!-- Employee Context Modal -->
-        <div id="mc-employee-modal" class="mc-modal">
-            <div class="mc-modal-content">
-                <span class="mc-close" onclick="closeEmployeeModal()">&times;</span>
-                <h2>Manage Employee Role</h2>
-                <p id="mc-emp-name-display"></p>
-                <form method="post">
-                    <input type="hidden" name="mc_save_employee_context" value="1">
-                    <input type="hidden" name="mc_employee_id" id="mc_emp_id_input">
-                    <div class="mc-form-group">
-                        <label>Role Title <span class="mc-required">*</span></label>
-                        <input type="text" name="mc_role_title" id="mc_role_input" placeholder="e.g. Senior Developer" required>
-                    </div>
-                    <div class="mc-form-group">
-                        <label>Key Responsibilities <span class="mc-required">*</span></label>
-                        <textarea name="mc_responsibilities" id="mc_resp_input" rows="4"
-                            placeholder="Key duties and expectations..." required></textarea>
-                    </div>
-                    <button type="submit" class="mc-button">Save Details</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Analysis Modal -->
-        <!-- Analysis Modal -->
-        <div id="mc-analysis-modal" class="mc-modal">
-            <div class="mc-modal-content mc-deep-report-modal">
-
-                <div id="mc-report-loading" style="display: none; text-align: center; padding: 40px; position: relative;">
-                    <span class="mc-close-modal" onclick="closeAnalysisModal()"
-                        style="position: absolute; top: 10px; right: 10px;">&times;</span>
-                    <div class="mc-spinner"></div>
-                    <p>Generating deep analysis... this may take a minute.</p>
-                </div>
-
-                <div id="mc-report-content" class="mc-deep-report">
-                    <!-- Hero Section -->
-                    <!-- Hero Section -->
-                    <div class="mc-report-hero">
-                        <div class="mc-report-header-row"
-                            style="display: flex; justify-content: space-between; align-items: flex-start; padding-top: 0.5rem;">
-                            <div class="mc-header-left">
-                                <h2
-                                    style="margin: 0; font-size: 2rem; font-weight: 800; color: #0f172a; line-height: 1.2; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-                                    <span id="mc-analysis-company"
-                                        style="font-size: 1.5rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;"></span>
-                                    <span style="font-size: 1.5rem; color: #cbd5e1; font-weight: 400;">—</span>
-                                    <span id="mc-analysis-name" style="color: #0f172a;">Employee Name</span>
-                                </h2>
-                                <div style="margin-top: 0.5rem;">
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span id="mc-role-badge" style="font-size: 1rem; color: #475569; font-weight: 600;">Role
-                                            Analysis</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mc-header-right" style="display: flex; align-items: flex-start; gap: 12px;">
-                                <button onclick="downloadReportPDF(this)" class="mc-btn mc-btn-secondary mc-btn-sm"
-                                    style="display: flex; align-items: center; gap: 6px; margin-top: 0;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                                        stroke="currentColor" style="width: 16px; height: 16px;">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                    </svg>
-                                    PDF
-                                </button>
-                                <button id="mc-regenerate-report-btn" class="mc-btn mc-btn-secondary mc-btn-sm"
-                                    style="display: flex; align-items: center; gap: 6px; margin-top: 0;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                                        stroke="currentColor" style="width: 16px; height: 16px;">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                                    </svg>
-                                    Regenerate
-                                </button>
-                                <span class="mc-close-hero" onclick="closeAnalysisModal()"
-                                    style="position: static; font-size: 1.5rem; cursor: pointer; color: #94a3b8; line-height: 1; padding: 4px; margin-left: 8px; margin-top: -4px;">&times;</span>
-                            </div>
-                        </div>
-                        <div
-                            style="padding-bottom: 1.5rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 1.5rem; margin-top: 0.5rem;">
-                            <p style="margin: 0; font-size: 0.9rem; color: #64748b; line-height: 1.5;">
-                                This report analyzes the employee's fit for the specific role based on their
-                                assessment results. It synthesizes data from Motivational, Personality, and
-                                Cognitive assessments to predict performance, cultural fit, and leadership
-                                potential.
-                            </p>
-                        </div>
-
-                        <!-- Company Culture Fit (Moved to Top) -->
-                        <div class="mc-hero-scores" style="width: 100%; margin-bottom: 2rem;">
-                            <div class="mc-score-card mc-fit-card"
-                                style="display: flex; flex-direction: column; gap: 1rem; padding: 2rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-                                <div style="display: flex; align-items: center; justify-content: space-between;">
-                                    <div>
-                                        <h4
-                                            style="margin:0; font-size:1.1rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; font-weight: 600;">
-                                            Company Culture Fit</h4>
-                                    </div>
-                                    <div style="display:flex; align-items:baseline; gap:8px;">
-                                        <span id="mc-hero-fit-score"
-                                            style="font-size:3em; font-weight:800; color:var(--mc-primary); line-height:1;">--</span>
-                                        <span style="font-size:1.2em; color:#94a3b8; font-weight:500;">/ 100</span>
-                                    </div>
-                                </div>
-                                <div style="border-top: 1px solid #f1f5f9; padding-top: 1rem;">
-                                    <p id="mc-hero-fit-rationale"
-                                        style="margin: 0; font-size: 1.05rem; line-height: 1.6; color: #334155;">--</p>
-                                </div>
-                                <!-- Added Summary Section -->
-                                <div
-                                    style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-left: 4px solid #2563eb; border-radius: 0 4px 4px 0;">
-                                    <p id="mc-hero-context-summary" style="margin: 0; color: #334155; line-height: 1.6;">--</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Leadership Strip -->
-                        <div class="mc-hero-leadership-strip">
-                            <div class="mc-leadership-header">
-                                <h4>Leadership Potential</h4>
-                                <div class="mc-leadership-spectrum">
-                                    <div class="mc-spectrum-track">
-                                        <div class="mc-spectrum-segment" data-level="individual">Individual</div>
-                                        <div class="mc-spectrum-segment" data-level="emerging">Emerging</div>
-                                        <div class="mc-spectrum-segment" data-level="developing">Developing</div>
-                                        <div class="mc-spectrum-segment" data-level="strong">Strong</div>
-                                        <div class="mc-spectrum-segment" data-level="rockstar">Rockstar Fit</div>
-                                    </div>
-                                    <div id="mc-spectrum-marker" class="mc-spectrum-marker"></div>
-                                </div>
-                            </div>
-                            <p id="mc-hero-leadership-summary">--</p>
-                        </div>
-
-                        <div class="mc-hero-main-stack" style="display: flex; flex-direction: column; gap: 2rem;">
-
-
-                            <!-- Insights Row (3 Columns) -->
-                            <div class="mc-hero-insights"
-                                style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
-                                <div class="mc-insight-box"
-                                    style="background:#f8fafc; border-radius:12px; padding:1.5rem; border: 1px solid #e2e8f0;">
-                                    <h4
-                                        style="margin-top:0; color:#475569; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:1rem; font-weight: 700;">
-                                        Top Strengths</h4>
-                                    <ul id="mc-hero-strengths" class="mc-pill-list"></ul>
-                                </div>
-                                <div class="mc-insight-box"
-                                    style="background:#fff1f2; border-radius:12px; padding:1.5rem; border: 1px solid #ffe4e6;">
-                                    <h4
-                                        style="margin-top:0; color:#9f1239; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:1rem; font-weight: 700;">
-                                        Potential Blindspots</h4>
-                                    <ul id="mc-hero-weaknesses" class="mc-pill-list"></ul>
-                                </div>
-                                <div class="mc-insight-box"
-                                    style="background:#f0f9ff; border-radius:12px; padding:1.5rem; border: 1px solid #e0f2fe;">
-                                    <h4
-                                        style="margin-top:0; color:#0369a1; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:1rem; font-weight: 700;">
-                                        Key Motivators</h4>
-                                    <ul id="mc-hero-motivators" class="mc-pill-list"></ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div><!-- Main Content Grid -->
-                    <div class="mc-report-body">
-                        <!-- Left Column: Guide & Coaching -->
-                        <div class="mc-report-main">
-
-                            <!-- Communication Playbook -->
-                            <div class="mc-section-card">
-                                <div class="mc-section-header">
-                                    <h3>Communication Playbook</h3>
-                                    <span class="mc-section-icon">💬</span>
-                                </div>
-                                <div class="mc-playbook-grid">
-                                    <div class="mc-playbook-col mc-do">
-                                        <h4>Do This</h4>
-                                        <ul id="mc-comm-do"></ul>
-                                    </div>
-                                    <div class="mc-playbook-col mc-avoid">
-                                        <h4>Avoid This</h4>
-                                        <ul id="mc-comm-avoid"></ul>
-                                    </div>
-                                </div>
-                                <div class="mc-playbook-footer">
-                                    <strong>Preferred Format:</strong> <span id="mc-comm-format">--</span>
-                                </div>
-                            </div>
-
-                            <!-- Motivation & Work Style -->
-                            <div class="mc-section-card">
-                                <div class="mc-section-header">
-                                    <h3>Motivation & Work Style</h3>
-                                    <span class="mc-section-icon">⚡</span>
-                                </div>
-                                <div class="mc-grid-2">
-                                    <div>
-                                        <h4>Energizers</h4>
-                                        <ul id="mc-motiv-energizers" class="mc-check-list"></ul>
-                                    </div>
-                                    <div>
-                                        <h4>Drainers</h4>
-                                        <ul id="mc-motiv-drainers" class="mc-cross-list"></ul>
-                                    </div>
-                                </div>
-                                <div class="mc-divider"></div>
-                                <div class="mc-work-style-box">
-                                    <p><strong>Work Style:</strong> <span id="mc-work-approach">--</span></p>
-                                    <div class="mc-grid-2">
-                                        <div>
-                                            <small>Best When:</small>
-                                            <ul id="mc-work-best" class="mc-sm-list"></ul>
-                                        </div>
-                                        <div>
-                                            <small>Struggles When:</small>
-                                            <ul id="mc-work-struggle" class="mc-sm-list"></ul>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-
-                            <!-- Strain Index Analysis -->
-                            <div class="mc-section-card" id="mc-strain-section" style="display:none;">
-                                <div class="mc-section-header">
-                                    <h3>Strain Index Analysis</h3>
-                                    <span class="mc-section-icon">🧠</span>
-                                </div>
-                                <div class="mc-strain-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                                    <!-- Overall Score -->
-                                    <div class="mc-strain-overall"
-                                        style="text-align: center; padding: 20px; background: #f8fafc; border-radius: 8px;">
-                                        <h4 style="margin: 0 0 10px 0; color: #64748b;">Overall Strain</h4>
-                                        <div class="mc-strain-gauge"
-                                            style="position: relative; width: 120px; height: 60px; margin: 0 auto; overflow: hidden;">
-                                            <div class="mc-gauge-bg"
-                                                style="width: 100%; height: 100%; background: #e2e8f0; border-top-left-radius: 60px; border-top-right-radius: 60px;">
-                                            </div>
-                                            <div class="mc-gauge-fill" id="mc-strain-gauge-fill"
-                                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #ef4444; border-top-left-radius: 60px; border-top-right-radius: 60px; transform-origin: bottom center; transform: rotate(-180deg); transition: transform 1s;">
-                                            </div>
-                                        </div>
-                                        <div id="mc-strain-overall-score"
-                                            style="font-size: 2em; font-weight: 800; color: #0f172a; margin-top: -10px;">
-                                            --</div>
-                                    </div>
-                                    <!-- Sub-Indices -->
-                                    <div class="mc-strain-breakdown">
-                                        <div class="mc-strain-row" style="margin-bottom: 15px;">
-                                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                                <span style="font-weight: 600; color: #475569;">Rumination</span>
-                                                <span id="mc-strain-rumination-val" style="font-weight: 700;">--</span>
-                                            </div>
-                                            <div
-                                                style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                                <div id="mc-strain-rumination-bar"
-                                                    style="height: 100%; background: #3b82f6; width: 0%;">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="mc-strain-row" style="margin-bottom: 15px;">
-                                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                                <span style="font-weight: 600; color: #475569;">Avoidance</span>
-                                                <span id="mc-strain-avoidance-val" style="font-weight: 700;">--</span>
-                                            </div>
-                                            <div
-                                                style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                                <div id="mc-strain-avoidance-bar"
-                                                    style="height: 100%; background: #f59e0b; width: 0%;">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="mc-strain-row">
-                                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                                <span style="font-weight: 600; color: #475569;">Emotional Flood</span>
-                                                <span id="mc-strain-flood-val" style="font-weight: 700;">--</span>
-                                            </div>
-                                            <div
-                                                style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                                <div id="mc-strain-flood-bar"
-                                                    style="height: 100%; background: #ec4899; width: 0%;">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div style="margin-top: 15px; font-size: 0.9em; color: #64748b; font-style: italic;">
-                                    * Strain Index metrics are internal-only and not visible to the employee.
-                                </div>
-                            </div>
-
-                            <!-- Coaching Recommendations -->
-                            <div class="mc-section-card">
-                                <div class="mc-section-header">
-                                    <h3>Coaching Recommendations</h3>
-                                    <span class="mc-section-icon">🎯</span>
-                                </div>
-                                <div id="mc-coaching-container" class="mc-cards-container">
-                                    <!-- Cards injected via JS -->
-                                </div>
-                            </div>
-
-                            <!-- Growth Edges -->
-                            <div class="mc-section-card">
-                                <div class="mc-section-header">
-                                    <h3>Stretch Assignments</h3>
-                                    <span class="mc-section-icon">📈</span>
-                                </div>
-                                <div id="mc-growth-container" class="mc-cards-container">
-                                    <!-- Cards injected via JS -->
-                                </div>
-                            </div>
-
-                            <!-- Team & Leadership -->
-                            <div class="mc-section-card">
-                                <div class="mc-section-header">
-                                    <h3>Team & Leadership</h3>
-                                    <span class="mc-section-icon">👥</span>
-                                </div>
-                                <div class="mc-grid-2">
-                                    <div>
-                                        <h4>Collaboration</h4>
-                                        <p><strong>Thrives with:</strong> <span id="mc-team-thrives">--</span></p>
-                                        <p><strong>Friction with:</strong> <span id="mc-team-friction">--</span></p>
-                                    </div>
-                                    <div>
-                                        <h4>Ideal Conditions</h4>
-                                        <p id="mc-hero-conditions">--</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-
-                        <!-- Right Column: Manager Fast Guide -->
-                        <div class="mc-report-sidebar">
-                            <div class="mc-fast-guide">
-                                <div class="mc-guide-header">
-                                    <h3>Manager Fast Guide</h3>
-                                    <small>Print / Save</small>
-                                </div>
-                                <div class="mc-guide-body">
-                                    <div class="mc-guide-item">
-                                        <strong>Top Strengths</strong>
-                                        <ul id="mc-guide-strengths"></ul>
-                                    </div>
-                                    <div class="mc-guide-item">
-                                        <strong>Key Motivators</strong>
-                                        <ul id="mc-guide-motivators"></ul>
-                                    </div>
-                                    <div class="mc-guide-item">
-                                        <strong>Communication</strong>
-                                        <ul id="mc-guide-comm"></ul>
-                                    </div>
-                                    <div class="mc-guide-item">
-                                        <strong>Coaching Moves</strong>
-                                        <ul id="mc-guide-coaching"></ul>
-                                    </div>
-                                    <div class="mc-guide-item">
-                                        <strong>This Year's Growth</strong>
-                                        <p id="mc-guide-growth">--</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="mc-meta-box">
-                                <h4>Conflict & Stress</h4>
-                                <p><strong>Handling:</strong> <span id="mc-stress-handling">--</span></p>
-                                <p><strong>Signs:</strong> <span id="mc-stress-signs">--</span></p>
-                                <p><strong>Support:</strong> <span id="mc-stress-support">--</span></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="mc-analysis-meta-warning"
-                        style="display:none; margin-top: 20px; font-size: 0.8em; color: #999; text-align: center;">
-                        Based on <span id="mc-meta-quiz-count">0</span> quizzes and <span id="mc-meta-peer-count">0</span>
-                        peer reviews.
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Modals are now rendered in the footer -->
+        <?php
+        add_action('wp_footer', [__CLASS__, 'render_modals']);
+        ?>
         </div>
 
         <!-- Experiments Modal -->
@@ -1568,11 +1322,27 @@ class MC_Employer_Dashboard
             }
 
             function openEmployeeModal(data) {
+                console.log('DEBUG: openEmployeeModal called with', data);
+                const modal = document.getElementById('mc-employee-modal');
+                if (modal) {
+                    modal.style.display = 'block';
+                    modal.style.zIndex = '9999'; // Safety net
+                }
+
+                // Force opacity on content just in case
+                const content = modal ? modal.querySelector('.mc-modal-content') : null;
+                if (content) {
+                    content.style.opacity = '1';
+                    content.style.display = 'block';
+                }
+                // Restore form population logic
                 document.getElementById('mc_emp_id_input').value = data.id;
                 document.getElementById('mc-emp-name-display').textContent = 'For: ' + data.name;
-                document.getElementById('mc_role_input').value = data.context.role || '';
-                document.getElementById('mc_resp_input').value = data.context.responsibilities || '';
-                document.getElementById('mc-employee-modal').style.display = 'block';
+
+                // Safety check for context
+                const context = data.context || {};
+                document.getElementById('mc_role_input').value = context.role || '';
+                document.getElementById('mc_resp_input').value = context.responsibilities || '';
             }
             function closeEmployeeModal() {
                 document.getElementById('mc-employee-modal').style.display = 'none';
@@ -1612,7 +1382,23 @@ class MC_Employer_Dashboard
             }
 
             function openAnalysisModal(data) {
-                console.log('DEBUG: openAnalysisModal called - VERSION 1.2.8');
+                console.log('DEBUG: openAnalysisModal called - VERSION 1.2.9');
+                const modal = document.getElementById('mc-analysis-modal');
+                if (modal) {
+                    modal.style.zIndex = '9999';
+                    modal.style.setProperty('display', 'block', 'important');
+                    modal.style.setProperty('visibility', 'visible', 'important');
+                    modal.style.setProperty('opacity', '1', 'important');
+
+                    // Force content visibility
+                    const content = modal.querySelector('.mc-modal-content');
+                    if (content) {
+                        content.style.setProperty('display', 'block', 'important');
+                        content.style.setProperty('opacity', '1', 'important');
+                        content.style.setProperty('visibility', 'visible', 'important');
+                        // content.style.setProperty('z-index', '2147483648', 'important'); // Content higher - REMOVED for stacking
+                    }
+                }
                 // Reset loading state
                 const loadingDiv = document.getElementById('mc-report-loading');
                 const contentDiv = document.getElementById('mc-report-content');
@@ -1647,19 +1433,11 @@ class MC_Employer_Dashboard
                     if (heroFitScore) heroFitScore.textContent = fitScore;
                     // Only show specific AI rationale to Admins (Debug Info)
                     if (heroFitRationale) {
+                        // Only show specific AI rationale to Admins (Debug Info)
                         if (typeof MC_IS_ADMIN !== 'undefined' && MC_IS_ADMIN) {
                             heroFitRationale.innerHTML = '<strong>AI Rationale (Admin Only):</strong> ' + (fitRationale || 'Analysis based on provided role & workplace context.');
                             heroFitRationale.style.display = 'block';
                         } else {
-                            // For regular employers, keep it simple or hide specific rationale if deemed "debug info"
-                            // The user request said "only showing the debug info to admins". 
-                            // If the rationale *is* the debug info, we hide it or show a generic message.
-                            // Admin logic in admin-testing-page.php shows it always. 
-                            // Here we will show the generic message for employers, or just the rationale if it's "safe". 
-                            // But the user was specific. Let's hide the *explicit* rationale line?
-                            // Actually, existing code might expect something.
-                            // Let's stick to: Admin gets the "AI Rationale:" prefix + text.
-                            // Employer gets the standard message "Based on role...".
                             heroFitRationale.textContent = 'Based on role & workplace context.';
                         }
                     }
@@ -1993,10 +1771,21 @@ class MC_Employer_Dashboard
                     };
                 }
 
+                // --- DEEP DIVE BUTTON HANDLER ---
+                const deepDiveBtn = document.getElementById('mc-strain-deep-dive-btn');
+                if (deepDiveBtn) {
+                    deepDiveBtn.onclick = function (e) {
+                        e.preventDefault();
+                        openStrainDetailsModal(data);
+                    };
+                }
+
                 // Show Modal
-                const modal = document.getElementById('mc-analysis-modal');
+                // Show Modal
+                // Show Modal Phase 2 (Force again)
                 if (modal) {
-                    modal.style.display = 'block';
+                    modal.style.zIndex = '9999';
+                    modal.style.setProperty('display', 'block', 'important');
                     // Add click outside listener
                     setTimeout(() => {
                         window.addEventListener('click', closeAnalysisOnClickOutside);
@@ -2019,21 +1808,28 @@ class MC_Employer_Dashboard
             function generateAnalysisReport(userId, btn) {
                 // Check for Role Context first
                 if (btn.getAttribute('data-has-role') === 'false') {
-                    if (confirm('⚠️ Role Context Missing\n\nTo ensure inaccurate Fit Scores, please define the Role (Title & Responsibilities) first.\n\nClick OK to open the "Manage Role" window now.')) {
-                        // Open the Manage Role modal using the data we attached
-                        const dataVal = btn.getAttribute('data-emp-context');
-                        if (dataVal) {
-                            try {
-                                openEmployeeModal(JSON.parse(dataVal));
-                            } catch (e) { console.error('Error parsing context data', e); }
+                    // Automatically open the Manage Role modal
+                    const dataVal = btn.getAttribute('data-emp-context');
+                    if (dataVal) {
+                        try {
+                            openEmployeeModal(JSON.parse(dataVal));
+                            // Optional: Highlight the "Save & Generate" button
+                            const saveGenBtn = document.getElementById('mc-save-generate-btn');
+                            if (saveGenBtn) saveGenBtn.focus();
+                        } catch (e) {
+                            console.error('Error parsing context data', e);
+                            alert('Please define the Role & Responsibilities first.');
                         }
+                    } else {
+                        alert('Please define the Role & Responsibilities first.');
                     }
                     return;
                 }
 
                 const originalHTML = btn.innerHTML;
                 // Update button state with spinner and text
-                btn.innerHTML = '<svg class="spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 16px; height: 16px; margin-right: 5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg> Regenerating...';
+                // Update button state with spinner and compact text
+                btn.innerHTML = '<svg class="spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px; vertical-align: middle;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>';
                 btn.disabled = true;
 
                 const data = new URLSearchParams();
@@ -2328,6 +2124,72 @@ class MC_Employer_Dashboard
                         btn.disabled = false;
                     });
             }
+
+            function saveEmployeeContext(generateAfter) {
+                const empId = document.getElementById('mc_emp_id_input').value;
+                const role = document.getElementById('mc_role_input').value;
+                const resp = document.getElementById('mc_resp_input').value;
+
+                if (!role || !resp) {
+                    alert('Please fill in both Role Title and Responsibilities.');
+                    return;
+                }
+
+                const btnId = generateAfter ? 'mc-save-generate-btn' : 'mc-save-only-btn';
+                const btn = document.getElementById(btnId);
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = 'Saving...';
+
+                const data = new URLSearchParams();
+                data.append('action', 'mc_save_employee_context');
+                data.append('employee_id', empId);
+                data.append('role', role);
+                data.append('responsibilities', resp);
+
+                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                    method: 'POST',
+                    body: data
+                })
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.success) {
+                            // Update UI to reflect that role is now present
+                            const genBtn = document.getElementById('generate-report-btn-' + empId);
+                            if (genBtn) {
+                                genBtn.setAttribute('data-has-role', 'true');
+                                // Update the context data on the button too so re-opening works
+                                try {
+                                    const currentData = JSON.parse(genBtn.getAttribute('data-emp-context'));
+                                    currentData.context = { role: role, responsibilities: resp };
+                                    genBtn.setAttribute('data-emp-context', JSON.stringify(currentData));
+                                } catch (e) { }
+                            }
+
+                            closeEmployeeModal();
+
+                            // If "Save & Generate", trigger the generation
+                            if (generateAfter && genBtn) {
+                                // Small delay to allow modal close
+                                setTimeout(() => {
+                                    generateAnalysisReport(empId, genBtn);
+                                }, 100);
+                            } else {
+                                alert('Role details saved successfully.');
+                            }
+                        } else {
+                            alert(res.data.message || 'Error saving details.');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert('Network error occurred.');
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    });
+            }
         </script>
         <!-- Context Configuration Modal -->
         <div id="mc-context-modal" class="mc-modal">
@@ -2357,7 +2219,242 @@ class MC_Employer_Dashboard
                 </div>
             </div>
         </div>
+        <!-- Strain Details Modal -->
+        <div id="mc-strain-details-modal" class="mc-modal" style="display:none; z-index:2147483650;">
+            <div class="mc-modal-content"
+                style="max-width:800px; margin:50px auto; padding:0; border-radius:12px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+                <div class="mc-modal-header"
+                    style="background:#fff; padding:20px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+                    <h2 id="mc-strain-details-title" style="margin:0; font-size:18px; color:#1e293b;">Strain Index Details</h2>
+                    <span class="mc-close" onclick="closeStrainDetailsModal()"
+                        style="cursor:pointer; font-size:24px; color:#94a3b8;">&times;</span>
+                </div>
+                <div id="mc-strain-details-body" style="padding:20px; overflow-y:auto; max-height:80vh; background:#f8fafc;">
+                    <!-- Content injected via JS -->
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // --- STRAIN DETAILED MODAL LOGIC ---
+            function openStrainDetailsModal(data) {
+                const modal = document.getElementById('mc-strain-details-modal');
+                if (modal) {
+                    document.body.appendChild(modal);
+                    modal.style.setProperty('z-index', '2147483647', 'important'); // Max Int (Valid)
+                    modal.style.display = 'block';
+                }
+                const body = document.getElementById('mc-strain-details-body');
+                const title = document.getElementById('mc-strain-details-title');
+
+                if (title) title.textContent = 'Strain Index Analysis: ' + (data.name || 'Employee');
+
+                // Check if data contains detailed answers. If not, fetch them.
+                if (!data.detailed_answers) {
+                    if (body) {
+                        body.innerHTML = '<div style="text-align:center; padding:40px;"><span class="dashicons dashicons-update spin" style="font-size:40px; color:#cbd5e1;"></span><p style="margin-top:20px; color:#64748b;">Loading deep dive data...</p></div>';
+                    }
+
+                    const formData = new URLSearchParams();
+                    formData.append('action', 'mc_view_analysis_report');
+                    formData.append('user_id', data.id); // Assuming data.id is passed
+
+                    fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                        method: 'POST',
+                        body: formData
+                    })
+                        .then(response => response.json())
+                        .then(result => {
+                            if (result.success) {
+                                // Merge fetched data
+                                data.detailed_answers = result.data.detailed_answers;
+                                // Ensure strain_results is also up to date if needed
+                                if (result.data.strain_breakdown) {
+                                    data.strain_results = result.data.strain_breakdown;
+                                }
+                                // Re-render with full data
+                                openStrainDetailsModal(data);
+                            } else {
+                                if (body) body.innerHTML = '<p style="color:red; text-align:center;">Failed to load details. ' + (result.data.message || '') + '</p>';
+                            }
+                        })
+                        .catch(e => {
+                            console.error(e);
+                            if (body) body.innerHTML = '<p style="color:red; text-align:center;">Error loading details.</p>';
+                        });
+                    return; // Stop execution, wait for fetch
+                }
+
+                let html = '';
+
+                // Overall Score Rationale
+                const si = data.strain_results?.strain_index || {};
+                const overall = si.overall_strain !== undefined ? si.overall_strain : 0;
+                const scorePct = (overall * 100).toFixed(1);
+
+                let color = '#22c55e';
+                let level = 'Low Risk';
+                let rationale = 'This score indicates the employee is showing healthy levels of engagement and resilience.';
+
+                if (overall >= 0.66) {
+                    color = '#dc2626';
+                    level = 'High Risk';
+                    rationale = 'This score indicates significant strain markers. The employee is likely experiencing high levels of rumination, avoidance, or emotional flooding which may lead to burnout.';
+                } else if (overall >= 0.33) {
+                    color = '#ca8a04';
+                    level = 'Moderate Risk';
+                    rationale = 'This score indicates emerging strain markers. While not critical, monitor for signs of increased stress or disengagement.';
+                }
+
+                html += `
+                    <div style="display:flex; align-items:center; gap:20px; padding:20px; background:#f8fafc; border-radius:8px; margin-bottom:24px; border-left:4px solid ${color};">
+                        <div style="text-align:center;">
+                            <div style="font-size:32px; font-weight:800; color:${color};">${scorePct}%</div>
+                            <div style="font-size:12px; font-weight:600; text-transform:uppercase; color:#64748b;">Strain Index</div>
+                        </div>
+                        <div>
+                            <h3 style="margin:0 0 8px; color:${color};">${level}</h3>
+                            <p style="margin:0; color:#475569; font-size:14px; line-height:1.5;">${rationale}</p>
+                        </div>
+                    </div>
+                `;
+
+                // Scoring Explanation Legend
+                html += `
+                    <div style="margin-bottom:20px; padding:15px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; color:#64748b;">
+                        <h4 style="margin:0 0 8px; color:#475569; font-size:13px; text-transform:uppercase;">About Strain Scoring</h4>
+                        <p style="margin:0 0 8px;">The Strain Index measures <strong>cognitive and emotional friction</strong>—the mental effort required to maintain engagement. It is an aggregate score derived from 30 specific questions across the MI, CDT, and Bartle assessments.</p>
+                        <p style="margin:0 0 8px;"><strong>Scoring Context:</strong> Individual questions are scored on a scale of 1 to 5, where <strong>5 indicates the highest level of strain</strong> (strongest agreement with a strain marker).</p>
+                        <ul style="margin:0; padding-left:16px; line-height:1.5;">
+                            <li><span style="color:#22c55e; font-weight:bold;">0% - 33% (Low Risk):</span> Healthy engagement. Few to no strain markers.</li>
+                            <li><span style="color:#ca8a04; font-weight:bold;">33% - 66% (Moderate Risk):</span> Emerging strain. Some conflicting motivations or avoidance behaviors present.</li>
+                            <li><span style="color:#dc2626; font-weight:bold;">66% - 100% (High Risk):</span> Significant strain. High potential for burnout or disengagement.</li>
+                        </ul>
+                    </div>
+                `;
+
+                // Detailed Answers Breakdown
+                const details = data.detailed_answers || {};
+                const cats = {
+                    'rumination': 'Processing Style (Rumination)',
+                    'avoidance': 'Decision Dynamics (Avoidance)',
+                    'flood': 'Engagement Style (Emotional Flood)'
+                };
+
+                html += '<div class="mc-strain-accordion">';
+
+                for (const [key, label] of Object.entries(cats)) {
+                    if (!details[key]) continue;
+
+                    html += `<h3 style="margin:20px 0 12px; border-bottom:1px solid #e2e8f0; padding-bottom:8px; color:#1e293b;">${label}</h3>`;
+
+                    ['MI', 'CDT', 'Bartle'].forEach(quiz => {
+                        const answers = details[key][quiz];
+                        if (answers && Object.keys(answers).length > 0) {
+                            html += `<div style="margin-bottom:12px;">`;
+                            html += `<h4 style="margin:0 0 8px; font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Source: ${quiz} Quiz</h4>`;
+                            html += `<ul style="list-style:none; margin:0; padding:0;">`;
+
+                            for (const [q, a] of Object.entries(answers)) {
+                                let ansColor = '#22c55e'; // Low (1)
+                                const val = parseFloat(a);
+                                if (val >= 4) {
+                                    ansColor = '#dc2626'; // High (4-5)
+                                } else if (val >= 2) {
+                                    ansColor = '#ca8a04'; // Moderate (2-3)
+                                }
+
+                                html += `<li style="margin-bottom:8px; font-size:13px; color:#334155; padding:8px; background:#fff; border:1px solid #f1f5f9; border-radius:4px;">
+                                    <strong style="display:block; margin-bottom:4px; color:#0f172a;">${q}</strong>
+                                    <span style="color:${ansColor}; font-weight:600;">User Answer: ${a} / 5</span>
+                                </li>`;
+                            }
+
+                            html += `</ul></div>`;
+                        }
+                    });
+                }
+                html += '</div>';
+
+                if (body) body.innerHTML = html;
+                if (modal) modal.style.display = 'block';
+
+                // Add click outside to close
+                window.onclick = function (event) {
+                    if (event.target == modal) {
+                        closeStrainDetailsModal();
+                    }
+                }
+            }
+
+            function closeStrainDetailsModal() {
+                const modal = document.getElementById('mc-strain-details-modal');
+                if (modal) modal.style.display = 'none';
+            }
+        </script>
+        <!-- Edit Email Modal -->
+        <div id="mc-edit-email-modal" class="mc-modal">
+            <div class="mc-modal-content">
+                <span class="mc-close" onclick="closeEmailEditModal()">&times;</span>
+                <h2>Edit Invite Email</h2>
+                <form method="post">
+                    <input type="hidden" name="mc_edit_invite_email_old" id="mc_edit_email_old_input">
+                    <div class="mc-form-group">
+                        <label>New Email Address <span class="mc-required">*</span></label>
+                        <input type="email" name="mc_edit_invite_email_new" id="mc_edit_email_new_input" required>
+                    </div>
+                    <div class="mc-form-actions" style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+                        <button type="button" class="mc-button secondary" onclick="closeEmailEditModal()">Cancel</button>
+                        <button type="submit" class="mc-button primary">Update Email</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            function openEmailEditModal(oldEmail) {
+                document.getElementById('mc_edit_email_old_input').value = oldEmail;
+                document.getElementById('mc_edit_email_new_input').value = oldEmail;
+                document.getElementById('mc-edit-email-modal').style.display = 'block';
+            }
+            function closeEmailEditModal() {
+                document.getElementById('mc-edit-email-modal').style.display = 'none';
+            }
+        </script>
         <?php
         return ob_get_clean();
+    }
+
+    public static function ajax_save_employee_context()
+    {
+        if (!current_user_can(MC_Roles::CAP_MANAGE_EMPLOYEES)) {
+            wp_send_json_error(['message' => 'Permission denied.'], 403);
+        }
+
+        $emp_id = intval($_POST['employee_id']);
+        $role = sanitize_text_field($_POST['role']);
+        $resp = sanitize_textarea_field($_POST['responsibilities']);
+
+        if (!$emp_id || empty($role) || empty($resp)) {
+            $current_user_id = get_current_user_id(); // Define $current_user_id here for the error message
+            wp_send_json_error(['message' => "Missing required fields. ID: $emp_id ($current_user_id), Role: " . substr($role, 0, 10) . ", Resp: " . substr($resp, 0, 10)]);
+        }
+
+        // Verify ownership (same logic as before)
+        $current_user_id = get_current_user_id();
+        $linked_employer = get_user_meta($emp_id, 'mc_linked_employer_id', true);
+
+        if (intval($linked_employer) !== $current_user_id && !current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Not authorized to manage this employee.'], 403);
+        }
+
+        $context = [
+            'role' => $role,
+            'responsibilities' => $resp
+        ];
+
+        update_user_meta($emp_id, 'mc_employee_role_context', $context);
+
+        wp_send_json_success(['message' => 'Context saved.']);
     }
 }

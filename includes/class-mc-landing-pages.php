@@ -36,24 +36,55 @@ class MC_Landing_Pages
         }
 
         $code = sanitize_text_field($_GET['invite_code']);
+        $employer_id = 0;
+        $valid_token = false;
 
-        // Set cookie for registration persistence
-        if (!headers_sent()) {
-            setcookie('mc_invite_code', $code, time() + 3600, COOKIEPATH, COOKIE_DOMAIN);
+        // Check format: ID-HASH (Unique Token) or just HASH (Company Share Code)
+        if (strpos($code, '-') !== false) {
+            $parts = explode('-', $code);
+            if (count($parts) >= 2 && is_numeric($parts[0])) {
+                $check_id = intval($parts[0]);
+                // Verify this token exists in the employer's invites
+                $invited = get_user_meta($check_id, 'mc_invited_employees', true);
+                if (is_array($invited)) {
+                    foreach ($invited as $inv) {
+                        if (is_array($inv) && isset($inv['token']) && $inv['token'] === $code) {
+                            $employer_id = $check_id;
+                            $valid_token = true;
+                            // Set unique token cookie
+                            if (!headers_sent()) {
+                                setcookie('mc_invite_token', $code, time() + 3600, '/');
+                                // Set email cookie for robustness in registration
+                                if (!empty($inv['email'])) {
+                                    setcookie('mc_invite_email', $inv['email'], time() + 3600, '/');
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
-        // Process Invite Code
-        $args = [
-            'meta_key' => 'mc_company_share_code',
-            'meta_value' => $code,
-            'number' => 1,
-            'fields' => 'ID'
-        ];
-        $employer_query = new WP_User_Query($args);
-        $employers = $employer_query->get_results();
+        // Fallback or Legacy: Treat as Company Share Code
+        if (!$valid_token) {
+            if (!headers_sent()) {
+                setcookie('mc_invite_code', $code, time() + 3600, '/');
+            }
+            $args = [
+                'meta_key' => 'mc_company_share_code',
+                'meta_value' => $code,
+                'number' => 1,
+                'fields' => 'ID'
+            ];
+            $employer_query = new WP_User_Query($args);
+            $employers = $employer_query->get_results();
+            if (!empty($employers)) {
+                $employer_id = $employers[0];
+            }
+        }
 
-        if (!empty($employers)) {
-            $employer_id = $employers[0];
+        if ($employer_id > 0) {
 
             // If user is logged in, link them immediately, assign role, and redirect to dashboard
             if (is_user_logged_in()) {
@@ -68,6 +99,25 @@ class MC_Landing_Pages
 
                     if ($current_linked_employer != $employer_id) {
                         update_user_meta($user_id, 'mc_linked_employer_id', $employer_id);
+
+                        // Transfer Role & Responsibilities from Invite
+                        $invited_employees = get_user_meta($employer_id, 'mc_invited_employees', true);
+                        if (is_array($invited_employees)) {
+                            $current_user = wp_get_current_user();
+                            foreach ($invited_employees as $invite) {
+                                $inv_email = is_array($invite) ? $invite['email'] : $invite;
+                                if (strtolower($inv_email) === strtolower($current_user->user_email)) {
+                                    if (is_array($invite) && !empty($invite['role'])) {
+                                        $context = [
+                                            'role' => $invite['role'],
+                                            'responsibilities' => $invite['responsibilities'] ?? ''
+                                        ];
+                                        update_user_meta($user_id, 'mc_employee_role_context', $context);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
 
                         // Assign Employee Role ONLY if they don't have a higher role
                         $is_employer = get_user_meta($user_id, 'mc_company_name', true);
@@ -101,7 +151,7 @@ class MC_Landing_Pages
         ?>
         <div class="mc-landing-page mc-employer-landing">
             <header class="mc-site-header">
-                <div class="mc-logo">What You're Good At</div>
+                <div class="mc-logo">The Science of Teamwork</div>
                 <div class="mc-nav">
                     <?php if (is_user_logged_in()): ?>
                         <a href="<?php echo wp_logout_url(get_permalink()); ?>">Logout</a>
@@ -212,7 +262,7 @@ class MC_Landing_Pages
                                     <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
                                 </svg>
                             </div>
-                            <h3>Cognitive Dissonance Tolerance</h3>
+                            <h3>Growth Strengths</h3>
                             <p class="mc-card-description">Measure how fast they can get feedback and grow.</p>
                             <ul class="mc-card-benefits">
                                 <li>Assess feedback receptivity</li>
@@ -227,7 +277,7 @@ class MC_Landing_Pages
                                     <path d="M12 6v6l4 2"></path>
                                 </svg>
                             </div>
-                            <h3>Bartle Player Types</h3>
+                            <h3>Core Motivations</h3>
                             <p class="mc-card-description">Discover exactly how they are motivated.</p>
                             <ul class="mc-card-benefits">
                                 <li>Uncover core drivers</li>
@@ -330,7 +380,7 @@ class MC_Landing_Pages
 
             <footer class="mc-landing-footer">
                 <div class="mc-container">
-                    <p>© <?php echo date('Y'); ?> What You're Good At. All rights reserved.</p>
+                    <p>© <?php echo date('Y'); ?> The Science of Teamwork. All rights reserved.</p>
                 </div>
             </footer>
 
@@ -561,9 +611,14 @@ class MC_Landing_Pages
 
                                 <!-- Strain Index Analysis -->
                                 <div class="mc-section-card" id="mc-strain-section" style="display:block;">
-                                    <div class="mc-section-header">
-                                        <h3>Strain Index Analysis</h3>
-                                        <span class="mc-section-icon">🧠</span>
+                                    <div class="mc-section-header"
+                                        style="display:flex; justify-content:space-between; align-items:center;">
+                                        <div style="display:flex; align-items:center; gap:10px;">
+                                            <h3>Strain Index Analysis</h3>
+                                            <span class="mc-section-icon">🧠</span>
+                                        </div>
+                                        <button class="mc-btn mc-btn-secondary mc-btn-sm" onclick="openSampleStrainDetails()"
+                                            style="font-size:0.85rem; padding:4px 12px; font-weight:500;">View More</button>
                                     </div>
                                     <div class="mc-strain-grid"
                                         style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -649,6 +704,91 @@ class MC_Landing_Pages
                                         </div>
                                     </div>
                                 </div>
+                                <!-- Stretch Assignments -->
+                                <div class="mc-section-card">
+                                    <div class="mc-section-header">
+                                        <h3>Stretch Assignments</h3>
+                                        <span class="mc-section-icon">📈</span>
+                                    </div>
+                                    <div class="mc-cards-container"
+                                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                        <!-- Card 1 -->
+                                        <div class="mc-card" style="display: flex; flex-direction: column; height: 100%;">
+                                            <div
+                                                style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                                                <h4 style="margin: 0; font-size: 1rem; color: #1e293b;">Lead a High-Stakes
+                                                    Project</h4>
+                                                <span class="mc-badge"
+                                                    style="background: #fef3c7; color: #b45309; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 600;">MODERATE
+                                                    RISK</span>
+                                            </div>
+                                            <p style="margin: 0 0 12px 0; font-size: 0.9rem; color: #475569; flex-grow: 1;">
+                                                <strong>Action:</strong> Take charge of a challenging project with tight
+                                                deadlines to enhance decision-making skills.
+                                            </p>
+                                            <p
+                                                style="margin: 0; font-size: 0.85rem; color: #64748b; padding-top: 12px; border-top: 1px solid #f1f5f9;">
+                                                Builds: Improved responsiveness and stress management under pressure.
+                                            </p>
+                                        </div>
+                                        <!-- Card 2 -->
+                                        <div class="mc-card" style="display: flex; flex-direction: column; height: 100%;">
+                                            <div
+                                                style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                                                <h4 style="margin: 0; font-size: 1rem; color: #1e293b;">Facilitate Team
+                                                    Workshops</h4>
+                                                <span class="mc-badge"
+                                                    style="background: #dcfce7; color: #15803d; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 600;">LOW
+                                                    RISK</span>
+                                            </div>
+                                            <p style="margin: 0 0 12px 0; font-size: 0.9rem; color: #475569; flex-grow: 1;">
+                                                <strong>Action:</strong> Lead workshops to improve team collaboration and
+                                                communication.
+                                            </p>
+                                            <p
+                                                style="margin: 0; font-size: 0.85rem; color: #64748b; padding-top: 12px; border-top: 1px solid #f1f5f9;">
+                                                Builds: Enhanced interpersonal skills and confidence in leadership.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Team & Leadership -->
+                                <div class="mc-section-card">
+                                    <div class="mc-section-header">
+                                        <h3>Team & Leadership</h3>
+                                        <span class="mc-section-icon">👥</span>
+                                    </div>
+                                    <div class="mc-grid-2">
+                                        <!-- Collaboration -->
+                                        <div>
+                                            <h4 style="margin-top: 0; color: #1e293b; margin-bottom: 12px;">Collaboration</h4>
+                                            <div style="margin-bottom: 16px;">
+                                                <strong
+                                                    style="display: block; color: #475569; margin-bottom: 4px; font-size: 0.9rem;">Thrives
+                                                    with:</strong>
+                                                <p style="margin: 0; font-size: 0.9rem; color: #64748b;">Team members who are
+                                                    proactive and clear communicators.</p>
+                                            </div>
+                                            <div>
+                                                <strong
+                                                    style="display: block; color: #475569; margin-bottom: 4px; font-size: 0.9rem;">Friction
+                                                    with:</strong>
+                                                <p style="margin: 0; font-size: 0.9rem; color: #64748b;">Individuals who are
+                                                    overly critical or disorganized.</p>
+                                            </div>
+                                        </div>
+                                        <!-- Ideal Conditions -->
+                                        <div>
+                                            <h4 style="margin-top: 0; color: #1e293b; margin-bottom: 12px;">Ideal Conditions
+                                            </h4>
+                                            <p style="margin: 0; font-size: 0.9rem; color: #64748b; line-height: 1.6;">
+                                                A structured environment with clear expectations and the opportunity for
+                                                occasional breaks to manage workload effectively.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Right Column: Manager Fast Guide -->
@@ -701,6 +841,31 @@ class MC_Landing_Pages
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sample Strain Details Modal -->
+            <div id="mc-sample-strain-details-modal" class="mc-modal" style="display: none; z-index: 2147483647;">
+                <div class="mc-modal-content"
+                    style="max-width: 800px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 0; background: #fff; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+                    <div
+                        style="position: sticky; top: 0; background: #fff; padding: 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; z-index: 100;">
+                        <div>
+                            <h3 id="mc-sample-strain-details-title"
+                                style="margin:0; font-size: 1.25rem; color: #0f172a; font-weight: 700;">Strain Index Deep Dive
+                            </h3>
+                            <p style="margin:4px 0 0 0; font-size:0.9rem; color:#64748b;">Detailed breakdown of friction points
+                            </p>
+                        </div>
+                        <span class="mc-close" onclick="closeSampleStrainDetails()"
+                            style="font-size: 2rem; cursor: pointer; line-height: 1; color: #94a3b8;">&times;</span>
+                    </div>
+                    <div id="mc-sample-strain-details-body" style="padding: 24px;">
+                        <!-- Content injected via JS -->
+                    </div>
+                    <div style="padding: 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; text-align: right;">
+                        <button class="mc-button mc-button-secondary" onclick="closeSampleStrainDetails()">Close</button>
                     </div>
                 </div>
             </div>
@@ -1064,7 +1229,7 @@ class MC_Landing_Pages
             </style>
 
             <script>
-                function openSampleReportModal() {
+                function openSam                               pleReportModal() {
                     document.getElementById('mc-sample-report-modal').style.display = 'flex';
                     document.body.style.overflow = 'hidden';
                 }
@@ -1101,20 +1266,45 @@ class MC_Landing_Pages
     {
         // Try to find linked employer to get logo
         $employer_id = 0;
+        $invited_email = '';
 
-        // 1. Check Invite Code (Logic moved to handle_invite_logic, just need employer ID for logo if applicable)
+        // 1. Check Invite Code
         if (isset($_GET['invite_code'])) {
             $code = sanitize_text_field($_GET['invite_code']);
-            $args = [
-                'meta_key' => 'mc_company_share_code',
-                'meta_value' => $code,
-                'number' => 1,
-                'fields' => 'ID'
-            ];
-            $employer_query = new WP_User_Query($args);
-            $employers = $employer_query->get_results();
-            if (!empty($employers)) {
-                $employer_id = $employers[0];
+            $found = false;
+
+            // Try Unique Token Format: ID-HASH
+            if (strpos($code, '-') !== false) {
+                $parts = explode('-', $code);
+                if (count($parts) >= 2 && is_numeric($parts[0])) {
+                    $check_id = intval($parts[0]);
+                    $invited = get_user_meta($check_id, 'mc_invited_employees', true);
+                    if (is_array($invited)) {
+                        foreach ($invited as $inv) {
+                            if (is_array($inv) && isset($inv['token']) && $inv['token'] === $code) {
+                                $employer_id = $check_id;
+                                $invited_email = $inv['email'] ?? '';
+                                $found = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fallback: Legacy Share Code
+            if (!$found) {
+                $args = [
+                    'meta_key' => 'mc_company_share_code',
+                    'meta_value' => $code,
+                    'number' => 1,
+                    'fields' => 'ID'
+                ];
+                $employer_query = new WP_User_Query($args);
+                $employers = $employer_query->get_results();
+                if (!empty($employers)) {
+                    $employer_id = $employers[0];
+                }
             }
         }
 
@@ -1144,7 +1334,7 @@ class MC_Landing_Pages
                     <?php if ($logo_url): ?>
                         <img src="<?php echo esc_url($logo_url); ?>" alt="Company Logo" style="max-height: 40px;">
                     <?php else: ?>
-                        What You're Good At
+                        The Science of Teamwork
                     <?php endif; ?>
                 </div>
                 <div class="mc-nav">
@@ -1192,20 +1382,24 @@ class MC_Landing_Pages
                         $button_url = $dashboard_url;
                         $button_text = $has_invite ? 'Accept Invitation & Start' : 'Begin Your Journey';
 
-                        // If invite code is present, ensure it's in the dashboard URL
-                        if (isset($_GET['invite_code'])) {
-                            $code = sanitize_text_field($_GET['invite_code']);
-                            $dashboard_url = add_query_arg('invite_code', $code, $dashboard_url);
-                            $button_url = $dashboard_url;
+                        // Logic for button URL
+                        if ($has_invite && !is_user_logged_in()) {
+                            $button_text = 'Accept Invitation & Start';
+                            $button_url = wp_registration_url();
+                            // Pass invite params
+                            $button_url = add_query_arg('invite_code', sanitize_text_field($_GET['invite_code']), $button_url);
+                            if (!empty($invited_email)) {
+                                $button_url = add_query_arg('user_email', $invited_email, $button_url);
+                            }
+                        } elseif (isset($_GET['invite_code'])) {
+                            // Logged in user or general case
+                            $button_url = add_query_arg('invite_code', sanitize_text_field($_GET['invite_code']), $button_url);
                         }
 
-                        if (!is_user_logged_in()) {
-                            $button_text = $has_invite ? 'Create Account & Accept' : 'Create Free Account';
+                        // If not logged in and no invite, generic
+                        if (!$has_invite && !is_user_logged_in()) {
+                            $button_text = 'Create Free Account';
                             $button_url = wp_registration_url();
-                            // Add invite code to registration URL if present
-                            if ($has_invite && isset($_GET['invite_code'])) {
-                                $button_url = add_query_arg('invite_code', sanitize_text_field($_GET['invite_code']), $button_url);
-                            }
                         }
                         ?>
                         <div class="mc-hero-actions">
@@ -1315,7 +1509,7 @@ class MC_Landing_Pages
                                     <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
                                 </svg>
                             </div>
-                            <h3>Cognitive Dissonance Tolerance</h3>
+                            <h3>Growth Strengths</h3>
                             <p class="mc-card-description">Measure your capacity for growth and complexity</p>
                             <ul class="mc-card-benefits">
                                 <li>Understand how you handle challenges and uncertainty</li>
@@ -1330,7 +1524,7 @@ class MC_Landing_Pages
                                     <path d="M12 6v6l4 2"></path>
                                 </svg>
                             </div>
-                            <h3>Bartle Player Types</h3>
+                            <h3>Core Motivations</h3>
                             <p class="mc-card-description">Reveal what makes work fulfilling for you</p>
                             <ul class="mc-card-benefits">
                                 <li>Discover if you're an Achiever, Explorer, Socializer, or Killer</li>
@@ -1444,7 +1638,7 @@ class MC_Landing_Pages
 
             <footer class="mc-landing-footer">
                 <div class="mc-container">
-                    <p>© <?php echo date('Y'); ?> What You're Good At. All rights reserved.</p>
+                    <p>© <?php echo date('Y'); ?> The Science of Teamwork. All rights reserved.</p>
                 </div>
             </footer>
         </div>
@@ -1493,8 +1687,102 @@ class MC_Landing_Pages
             document.addEventListener('keydown', function (event) {
                 if (event.key === 'Escape') {
                     window.closeSampleReportModal();
+                    window.closeSampleStrainDetails();
                 }
             });
+
+            // Sample Data mimicking real assessment results
+            const sampleStrainData = {
+                score: 20.0,
+                risk_level: 'Low Risk',
+                risk_color: '#22c55e',
+                rationale: 'Healthy engagement. Few to no strain markers.',
+                breakdown: {
+                    'Rumination': { score: 1.5, percent: 15, color: '#22c55e' },
+                    'Avoidance': { score: 1.0, percent: 10, color: '#22c55e' },
+                    'Emotional Flood': { score: 3.5, percent: 35, color: '#f59e0b' }
+                },
+                detailed_answers: {
+                    'Rumination': {
+                        'MI': {
+                            'When I face a difficult decision, I need extra time to figure out the "right" move.': '2',
+                            'I replay conversations or choices in my head to see what I could have done differently.': '1'
+                        }
+                    },
+                    'Avoidance': {
+                        'CDT': {
+                            'I tend to put off tasks that feel overwhelming or unclear.': '1',
+                            'I prefer to stick to what I know rather than risk looking incompetent.': '1'
+                        }
+                    },
+                    'Emotional Flood': {
+                        'Bartle': {
+                            'I sometimes feel mentally "stuck" when two of my thoughts or values clash.': '4',
+                            'High-pressure situations make it hard for me to think clearly.': '3'
+                        }
+                    }
+                }
+            };
+
+            window.openSampleStrainDetails = function () {
+                const modal = document.getElementById('mc-sample-strain-details-modal');
+                if (!modal) return;
+
+                modal.style.display = 'flex';
+                // modal.style.zIndex = '2147483647'; // Ensure on top
+
+                const body = document.getElementById('mc-sample-strain-details-body');
+
+                let html = '';
+
+                // Explainer
+                html += `<div style="background:#f1f5f9; padding:16px; border-radius:8px; margin-bottom:24px; border:1px solid #e2e8f0;">
+                    <p style="margin:0 0 12px 0; font-size:0.9rem; color:#475569;">
+                        <strong>Scoring Context:</strong> Individual questions are scored on a scale of 1 to 5, where <strong>5 indicates the highest level of strain</strong> (strongest agreement with a strain marker).
+                    </p>
+                    <div style="display:flex; gap:12px; font-size:0.85rem; margin-bottom:12px;">
+                        <span style="color:#166534; font-weight:600;">0% - 33% (Low Risk)</span>
+                        <span style="color:#ca8a04; font-weight:600;">33% - 66% (Moderate Risk)</span>
+                        <span style="color:#dc2626; font-weight:600;">66% - 100% (High Risk)</span>
+                    </div>
+                    <p style="margin:0; font-size:0.85rem; color:#64748b; font-style:italic; border-top:1px solid #e2e8f0; padding-top:10px;">
+                        Note: The actual surveys contain 30 questions; what appears here is just a sample of the kind of questions used to measure a strain index.
+                    </p>
+                </div>`;
+
+                // Categories
+                for (const [key, category] of Object.entries(sampleStrainData.breakdown)) {
+                    html += `<h3 style="margin:0 0 12px 0; font-size:1.1rem; color:#1e293b; border-bottom:1px solid #e2e8f0; padding-bottom:8px;">${key} (${category.percent}%)</h3>`;
+
+                    if (sampleStrainData.detailed_answers[key]) {
+                        for (const [quiz, answers] of Object.entries(sampleStrainData.detailed_answers[key])) {
+                            html += `<div style="margin-bottom:16px;">`;
+                            html += `<h4 style="margin:0 0 8px 0; font-size:0.8rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Source: ${quiz} Quiz</h4>`;
+                            html += `<ul style="list-style:none; padding:0; margin:0;">`;
+
+                            for (const [q, a] of Object.entries(answers)) {
+                                let ansColor = '#22c55e'; // Low
+                                const val = parseFloat(a);
+                                if (val >= 4) ansColor = '#dc2626';
+                                else if (val >= 2) ansColor = '#ca8a04';
+
+                                html += `<li style="margin-bottom:8px; padding:12px; background:#fff; border:1px solid #f1f5f9; border-radius:6px;">
+                                    <strong style="display:block; margin-bottom:4px; color:#334155; font-size:0.95rem;">${q}</strong>
+                                    <span style="font-weight:600; color:${ansColor}; font-size:0.9rem;">User Answer: ${a} / 5</span>
+                                </li>`;
+                            }
+                            html += `</ul></div>`;
+                        }
+                    }
+                }
+
+                body.innerHTML = html;
+            };
+
+            window.closeSampleStrainDetails = function () {
+                const modal = document.getElementById('mc-sample-strain-details-modal');
+                if (modal) modal.style.display = 'none';
+            };
         </script>
         <?php
     }

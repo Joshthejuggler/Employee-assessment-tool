@@ -1384,6 +1384,13 @@ TXT;
 
         // Gather Context
         $role_data = get_user_meta($user_id, 'mc_employee_role_context', true) ?: [];
+
+        // PRE-CONDITION: Block if role or responsibilities are missing
+        if (empty($role_data['role']) || empty($role_data['responsibilities'])) {
+            error_log("MC AI: Blocked report generation for User $user_id due to missing Role Context.");
+            return false;
+        }
+
         $employer_id = get_user_meta($user_id, 'mc_linked_employer_id', true);
         $workplace_data = $employer_id ? (get_user_meta($employer_id, 'mc_workplace_context', true) ?: []) : [];
 
@@ -1420,7 +1427,7 @@ TXT;
             "Return ONLY a JSON object with the following structure:\n" .
             "{\n" .
             "  \"executive_snapshot\": {\n" .
-            "    \"context_summary\": \"A 2-3 sentence executive summary analyzing how well this employee's profile fits the specific role and company culture provided. Do NOT just repeat the inputs; synthesize the fit.\",\n" .
+            "    \"context_summary\": \"Synthesize the role and workplace context into a 2-3 sentence summary that explains the basis of this analysis. Explicitly mention the Role Title and key context factors (e.g., 'Evaluating fitness for [Role Context Role] in a [Workplace Context Industry] environment...').\",\n" .
             "    \"top_strengths\": [\"Strength 1\", \"Strength 2\", \"Strength 3\"],\n" .
             "    \"top_weaknesses\": [\"Weakness 1\", \"Weakness 2\"],\n" .
             "    \"key_motivators\": [\"Motivator 1\", \"Motivator 2\"],\n" .
@@ -1429,7 +1436,7 @@ TXT;
             "  },\n" .
             "  \"overall_fit\": {\n" .
             "    \"score\": \"<<INTEGER 0-100>>\",\n" .
-            "    \"rationale\": \"Brief explanation of fit based on company context. CRITICAL: If the candidate has High scores in Strain Index (Rumination, Avoidance, Flood) OR if their profile directly conflicts with the Role Requirements, you MUST DEDUCT significantly from the score. A 'Poor' fit should rarely exceed 60/100.\"\n" .
+            "    \"rationale\": \"Detailed explanation (3-4 sentences) of why this fit score was assigned, referencing specific role requirements and workplace values. Explain the 'Why' behind the score so the employer understands the synthesis.\"\n" .
             "  },\n" .
             "  \"communication_playbook\": {\n" .
             "    \"do\": [\"Specific advice 1\", \"Specific advice 2\"],\n" .
@@ -1567,6 +1574,14 @@ TXT;
 
             // Generate the analysis
             $success = self::generate_analysis_on_completion($user_id);
+            if ($success === false) {
+                // Check if it was blocked due to role context
+                $ctx = get_user_meta($user_id, 'mc_employee_role_context', true);
+                if (empty($ctx) || empty($ctx['role']) || empty($ctx['responsibilities'])) {
+                    wp_send_json_error(['message' => 'Role Context is missing. Please define Role & Responsibilities first.'], 400);
+                }
+                wp_send_json_error(['message' => 'AI Generation Failed. Please try again.'], 500);
+            }
 
             if ($success) {
                 // Fetch the updated analysis to return to the frontend

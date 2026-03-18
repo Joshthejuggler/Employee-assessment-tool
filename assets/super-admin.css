@@ -675,8 +675,8 @@ a.mc-action-btn:hover {
 
 .mc-nested-grid {
     display: grid;
-    grid-template-columns: 1.5fr 2fr 1fr 1.5fr 80px;
-    /* Name, Email, Status, Last Login, Actions */
+    grid-template-columns: 1.5fr 2fr 1fr 1fr 1.5fr 80px;
+    /* Name, Email, Status, Quizzes, Last Login, Actions */
     gap: 0 32px;
     /* No row gap (handled by padding/border), 32px column gap */
     width: 100%;
@@ -705,7 +705,7 @@ a.mc-action-btn:hover {
 }
 
 /* Remove bottom border for the last row's cells */
-.mc-grid-cell:nth-last-child(-n+4) {
+.mc-grid-cell:nth-last-child(-n+6) {
     border-bottom: none;
 }
 

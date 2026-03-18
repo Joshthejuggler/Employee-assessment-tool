@@ -730,7 +730,7 @@
                         <h2 class="mi-section-title">🧭 Your Next Step: The Skill of Self-Discovery</h2>
                         <p>${promptData.prompt}</p>
                         <div style="text-align: center; margin-top: 1.5em;">
-                            <a href="${cdtQuizUrl}" class="mi-quiz-button mi-quiz-button-primary mi-quiz-button-next-step">Take the CDT Quiz Now</a>
+                            <a href="${cdtQuizUrl}" class="mi-quiz-button mi-quiz-button-primary mi-quiz-button-next-step">Take the Growth Strengths Assessment</a>
                         </div>
                     </div>`;
           resultsDiv.insertAdjacentHTML('beforeend', cdtPromptHtml);

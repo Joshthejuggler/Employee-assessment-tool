@@ -43,7 +43,7 @@ class MC_Employer_Onboarding
         ?>
         <div class="mc-onboarding-wrapper">
             <header class="mc-site-header">
-                <div class="mc-logo">What You're Good At</div>
+                <div class="mc-logo">The Science of Teamwork</div>
                 <div class="mc-nav">
                     <a href="<?php echo wp_logout_url(get_permalink()); ?>">Logout</a>
                 </div>
@@ -432,7 +432,9 @@ class MC_Employer_Onboarding
                     }
 
                     // Merge logic: Add new ones, avoid duplicates based on email
-                    foreach ($invited_employees as $new_invite) {
+                    foreach ($invited_employees as &$new_invite) {
+                        $new_invite['token'] = $user_id . '-' . substr(md5(uniqid(mt_rand(), true)), 0, 8);
+
                         $exists = false;
                         foreach ($existing_invites as $key => $existing) {
                             // Handle backward compatibility where existing might be just a string (email)
@@ -442,6 +444,12 @@ class MC_Employer_Onboarding
                                 // Update name if it was missing or changed
                                 if (is_array($existing)) {
                                     $existing_invites[$key]['name'] = $new_invite['name'];
+                                    // Preserve existing token if present, otherwise use new one
+                                    if (isset($existing_invites[$key]['token'])) {
+                                        $new_invite['token'] = $existing_invites[$key]['token'];
+                                    } else {
+                                        $existing_invites[$key]['token'] = $new_invite['token'];
+                                    }
                                 } else {
                                     // Convert string to array
                                     $existing_invites[$key] = $new_invite;
@@ -454,6 +462,7 @@ class MC_Employer_Onboarding
                             $existing_invites[] = $new_invite;
                         }
                     }
+                    unset($new_invite); // break reference
 
                     update_user_meta($user_id, 'mc_invited_employees', $existing_invites);
 
@@ -477,12 +486,19 @@ class MC_Employer_Onboarding
                         $employee_landing_url = MC_Funnel::find_page_by_shortcode('mc_employee_landing') ?: home_url();
                     }
 
-                    // Add invite code to URL
-                    $invite_link = add_query_arg('invite_code', $share_code, $employee_landing_url);
+                    // Loop through the *original* new invites list to send emails
+                    // We need to match them back to get their tokens if we want to be precise, 
+                    // but since we assigned tokens to $new_invite in the loop above, $invited_employees has them.
 
-                    foreach ($emails_to_invite as $invite) {
+                    foreach ($invited_employees as $invite) {
                         $email = $invite['email'];
                         $name = $invite['name'];
+                        // Use the token if available, fall back to share code (should practically always have token now)
+                        $code_to_use = $invite['token'] ?? $share_code;
+
+                        // Add invite code to URL
+                        $invite_link = add_query_arg('invite_code', $code_to_use, $employee_landing_url);
+
                         $greeting = $name ? "Hello " . esc_html($name) . "!" : "Hello!";
 
                         $message = "
@@ -510,7 +526,7 @@ class MC_Employer_Onboarding
                         <body>
                             <div class='email-container'>
                                 <div class='email-header'>
-                                    <h1>What You're Good At</h1>
+                                    <h1>The Science of Teamwork</h1>
                                 </div>
                                 <div class='email-body'>
                                     <h2>" . $greeting . "</h2>
@@ -531,7 +547,7 @@ class MC_Employer_Onboarding
                                     <a href='" . esc_url($invite_link) . "'>" . esc_url($invite_link) . "</a></p>
                                 </div>
                                 <div class='email-footer'>
-                                    &copy; " . date('Y') . " What You're Good At. All rights reserved.
+                                    &copy; " . date('Y') . " The Science of Teamwork. All rights reserved.
                                 </div>
                             </div>
                         </body>

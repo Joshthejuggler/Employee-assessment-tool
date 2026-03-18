@@ -407,6 +407,19 @@
     border-color: rgba(255, 255, 255, 0.5);
 }
 
+/* Ensure secondary CTA remains visually distinct from primary in hero */
+.mc-landing-hero .mc-hero-cta .mc-button-secondary {
+    background-color: transparent !important;
+    color: var(--mc-white) !important;
+    border: 2px solid rgba(255, 255, 255, 0.55) !important;
+    box-shadow: none !important;
+}
+
+.mc-landing-hero .mc-hero-cta .mc-button-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.14) !important;
+    border-color: rgba(255, 255, 255, 0.8) !important;
+}
+
 .mc-button-outline {
     background-color: transparent;
     color: var(--mc-primary);

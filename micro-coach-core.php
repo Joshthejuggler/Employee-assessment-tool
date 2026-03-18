@@ -802,10 +802,10 @@ class Micro_Coach_Core
                                                 <div class="composite-cta profile-links" style="text-align:center"><em>
                                                         <?php if ($mi_url): ?><a class="inline-link" href="<?php echo esc_url($mi_url); ?>">View MI
                                                                     results</a> · <?php endif; ?>
-                                                        <?php if ($cdt_url): ?><a class="inline-link" href="<?php echo esc_url($cdt_url); ?>">View CDT
+                                                        <?php if ($cdt_url): ?><a class="inline-link" href="<?php echo esc_url($cdt_url); ?>">View Growth Strengths
                                                                     results</a> · <?php endif; ?>
                                                         <?php if ($bartle_url): ?><a class="inline-link" href="<?php echo esc_url($bartle_url); ?>">View
-                                                                    Player Type results</a><?php endif; ?>
+                                                                    Core Motivation results</a><?php endif; ?>
                                                     </em></div>
                                             </div>
                                             <div id="tab-path" class="tab-content">
@@ -1092,7 +1092,7 @@ class Micro_Coach_Core
                                                     <?php endif; ?>
                                                     <?php if (!empty($prediction_paragraph)): ?>
                                                             <div class="quiz-dashboard-insight-panel insight-panel-prediction">
-                                                                <h4 class="insight-panel-title">Your Personalized CDT Prediction</h4>
+                                                                <h4 class="insight-panel-title">Your Personalized Growth Strengths Prediction</h4>
                                                                 <p><?php echo wp_kses_post($prediction_paragraph); ?></p>
                                                             </div>
                                                     <?php endif; ?>
@@ -1102,7 +1102,7 @@ class Micro_Coach_Core
                                                             <?php if ($quiz_page_url): ?>
                                                                     <a href="<?php echo esc_url($quiz_page_url); ?>"
                                                                         class="quiz-dashboard-button <?php if ($has_results)
-                                                                            echo 'quiz-dashboard-button-secondary'; ?>"><?php echo $has_results ? 'View Results' : 'Start Quiz'; ?></a>
+                                                                            echo 'quiz-dashboard-button-secondary'; ?>"><?php echo $has_results ? 'View Results' : 'Start Assessment'; ?></a>
                                                             <?php else: ?>
                                                                     <span class="quiz-dashboard-button is-disabled"
                                                                         title="<?php printf(esc_attr__('Admin: Please create a page with the shortcode [%s] for this quiz.'), esc_attr($quiz['shortcode'])); ?>"><?php _e('Not Linked'); ?></span>
@@ -1182,7 +1182,7 @@ class Micro_Coach_Core
                                                     if (!empty($latest_activity['results']['sortedScores'][0]) && isset($cdt_categories)) {
                                                         $top_cdt_slug = $latest_activity['results']['sortedScores'][0][0];
                                                         $top_cdt_name = $cdt_categories[$top_cdt_slug] ?? 'Unknown';
-                                                        $latest_insight_html = '<p>Your CDT Quiz results indicate a high capacity for <strong>' . esc_html($top_cdt_name) . '</strong>. This is a key skill for navigating complex challenges.</p>';
+                                                        $latest_insight_html = '<p>Your Growth Strengths Assessment results indicate a high capacity for <strong>' . esc_html($top_cdt_name) . '</strong>. This is a key skill for navigating complex challenges.</p>';
 
                                                         // Add growth area
                                                         $sorted_scores = $latest_activity['results']['sortedScores'];

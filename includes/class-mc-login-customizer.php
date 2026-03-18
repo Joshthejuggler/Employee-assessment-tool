@@ -139,6 +139,57 @@ class MC_Login_Customizer
      */
     public static function add_password_fields()
     {
+        // Check for invite cookie to display welcome message
+        if (isset($_COOKIE['mc_invite_token'])) {
+            $token = sanitize_text_field($_COOKIE['mc_invite_token']);
+            $parts = explode('-', $token);
+            if (count($parts) >= 2 && is_numeric($parts[0])) {
+                $employer_id = intval($parts[0]);
+                $invited_employees = get_user_meta($employer_id, 'mc_invited_employees', true);
+                $invite_name = '';
+                if (is_array($invited_employees)) {
+                    foreach ($invited_employees as $invite) {
+                        if (is_array($invite) && isset($invite['token']) && $invite['token'] === $token) {
+                            $invite_name = $invite['name'];
+                            break;
+                        }
+                    }
+                }
+
+                if ($invite_name) {
+                    $company_name = get_user_meta($employer_id, 'mc_company_name', true) ?: 'the team';
+                    echo '<p class="message register" style="border-left: 4px solid #72aee6; padding: 12px; background: #fff; margin-bottom: 20px;">
+                        Registering as: <strong>' . esc_html($invite_name) . '</strong><br>
+                        Invited by: <strong>' . esc_html($company_name) . '</strong>
+                    </p>';
+                }
+            }
+        }
+
+        // Pre-fill and Lock Email if provided via URL or Cookie
+        $prefill_email = '';
+        if (isset($_GET['user_email'])) {
+            $prefill_email = sanitize_email($_GET['user_email']);
+        } elseif (isset($_COOKIE['mc_invite_email'])) {
+            $prefill_email = sanitize_email($_COOKIE['mc_invite_email']);
+        }
+
+        if ($prefill_email) {
+            ?>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    var emailField = document.getElementById('user_email');
+                    if (emailField) {
+                        emailField.value = '<?php echo esc_js($prefill_email); ?>';
+                        emailField.setAttribute('readonly', 'readonly');
+                        emailField.style.backgroundColor = '#f0f0f1';
+                        emailField.style.cursor = 'not-allowed';
+                        // Also add hidden input in case disabled fields aren't submitted (though readonly usually is)
+                    }
+                });
+            </script>
+            <?php
+        }
         ?>
         <p>
             <label for="password">Password <br />
@@ -164,6 +215,31 @@ class MC_Login_Customizer
         } elseif ($_POST['password'] !== $_POST['password_confirm']) {
             $errors->add('password_mismatch', __('<strong>ERROR</strong>: Passwords do not match.', 'mc-quiz'));
         }
+
+        // Enforce Email Match if Invite Token is present
+        if (isset($_COOKIE['mc_invite_token'])) {
+            $token = sanitize_text_field($_COOKIE['mc_invite_token']);
+            // Redundant lookup but necessary for security
+            $parts = explode('-', $token);
+            if (count($parts) >= 2 && is_numeric($parts[0])) {
+                $employer_id = intval($parts[0]);
+                $invited_employees = get_user_meta($employer_id, 'mc_invited_employees', true);
+                if (is_array($invited_employees)) {
+                    foreach ($invited_employees as $invite) {
+                        if (is_array($invite) && isset($invite['token']) && $invite['token'] === $token) {
+                            if (!empty($invite['email'])) {
+                                // Check if submitted email matches invited email
+                                if (strtolower(trim($user_email)) !== strtolower(trim($invite['email']))) {
+                                    $errors->add('email_mismatch', __('<strong>ERROR</strong>: You must register with the email address you were invited with (' . esc_html($invite['email']) . ').', 'mc-quiz'));
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         return $errors;
     }
 
@@ -185,10 +261,96 @@ class MC_Login_Customizer
 
             // Handle Role Assignment based on invite cookie
             if (class_exists('MC_Roles')) {
-                if (isset($_COOKIE['mc_invite_code'])) {
+                // Check for Unique Token First (Preferred)
+                if (isset($_COOKIE['mc_invite_token'])) {
+                    $token = sanitize_text_field($_COOKIE['mc_invite_token']);
+                    $parts = explode('-', $token);
+                    if (count($parts) >= 2 && is_numeric($parts[0])) {
+                        $employer_id = intval($parts[0]);
+
+                        // Link to employer
+                        update_user_meta($user_id, 'mc_linked_employer_id', $employer_id);
+                        $user->set_role(MC_Roles::ROLE_EMPLOYEE);
+
+                        // Claim the invite
+                        $invited_employees = get_user_meta($employer_id, 'mc_invited_employees', true);
+                        if (is_array($invited_employees)) {
+                            $updated = false;
+                            foreach ($invited_employees as $key => $invite) {
+                                if (is_array($invite) && isset($invite['token']) && $invite['token'] === $token) {
+                                    // Claim it!
+                                    $invited_employees[$key]['claimed_by'] = $user_id;
+                                    $invited_employees[$key]['registered_email'] = $user->user_email; // Track actual email
+                                    $updated = true;
+
+                                    // Transfer Context
+                                    if (!empty($invite['role'])) {
+                                        $context = [
+                                            'role' => $invite['role'],
+                                            'responsibilities' => $invite['responsibilities'] ?? ''
+                                        ];
+                                        update_user_meta($user_id, 'mc_employee_role_context', $context);
+                                    }
+
+                                    // Auto-fill Name from Invite
+                                    if (!empty($invite['name'])) {
+                                        $name_parts = explode(' ', trim($invite['name']), 2);
+                                        $first_name = $name_parts[0];
+                                        $last_name = isset($name_parts[1]) ? $name_parts[1] : '';
+
+                                        wp_update_user([
+                                            'ID' => $user_id,
+                                            'first_name' => $first_name,
+                                            'last_name' => $last_name,
+                                            'display_name' => $invite['name']
+                                        ]);
+                                    }
+
+                                    break;
+                                }
+                            }
+                            if ($updated) {
+                                update_user_meta($employer_id, 'mc_invited_employees', $invited_employees);
+                            }
+                        }
+                    }
+                }
+                // Fallback to legacy Share Code if no unique token
+                elseif (isset($_COOKIE['mc_invite_code'])) {
                     $user->set_role(MC_Roles::ROLE_EMPLOYEE);
+                    // Link to employer (added logic here)
+                    $invite_code = sanitize_text_field($_COOKIE['mc_invite_code']);
+                    $args = [
+                        'meta_key' => 'mc_company_share_code',
+                        'meta_value' => $invite_code,
+                        'number' => 1,
+                        'fields' => 'ID'
+                    ];
+                    $employer_query = new WP_User_Query($args);
+                    $employers = $employer_query->get_results();
+                    if (!empty($employers)) {
+                        $employer_id = $employers[0];
+                        update_user_meta($user_id, 'mc_linked_employer_id', $employer_id);
+                        // Transfer Role & Responsibilities from Invite (added logic here)
+                        $invited_employees = get_user_meta($employer_id, 'mc_invited_employees', true);
+                        if (is_array($invited_employees)) {
+                            foreach ($invited_employees as $invite) {
+                                $inv_email = is_array($invite) ? $invite['email'] : $invite;
+                                if (strtolower($inv_email) === strtolower($user->user_email)) {
+                                    if (is_array($invite) && !empty($invite['role'])) {
+                                        $context = [
+                                            'role' => $invite['role'],
+                                            'responsibilities' => $invite['responsibilities'] ?? ''
+                                        ];
+                                        update_user_meta($user_id, 'mc_employee_role_context', $context);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 } else {
-                    // Default new registrations to Employer (if no invite code)
+                    // Default new registrations to Employer (if no invite code or token)
                     $user->set_role(MC_Roles::ROLE_EMPLOYER);
                 }
             }
