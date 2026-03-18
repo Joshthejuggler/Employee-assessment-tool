@@ -1381,6 +1381,15 @@ h1.entry-title {
     justify-content: center;
 }
 
+.mc-success-actions .mc-button-primary {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: var(--mc-white);
+}
+
+.mc-success-actions .mc-button-primary:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+}
+
 .mc-success-actions .mc-button svg {
     margin-left: 8px;
 }
